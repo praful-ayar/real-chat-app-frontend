@@ -21,9 +21,27 @@
         <h3>Online Users</h3>
       </div>
       <mat-list>
-        <mat-list-item *ngFor="let u of users">
+        <!-- Public Chat Option -->
+        <mat-list-item (click)="selectUser(null)" [style.background]="selectedUser === null ? '#e0f7fa' : ''"
+          style="cursor: pointer;" class="compact-list-item">
+          <mat-icon matListItemIcon color="primary">group</mat-icon>
+          <div matListItemTitle class="list-item-content">
+            <span>Public Chat</span>
+            <span class="unread-badge" *ngIf="unreadCounts['public']">{{unreadCounts['public']}}</span>
+          </div>
+        </mat-list-item>
+
+        <mat-divider style="margin: 10px 0;"></mat-divider>
+
+        <!-- Online Users List -->
+        <mat-list-item *ngFor="let u of users" (click)="selectUser(u.username)"
+          [style.background]="selectedUser === u.username ? '#e0f7fa' : ''" style="cursor: pointer;"
+          class="compact-list-item">
           <mat-icon matListItemIcon color="primary">person</mat-icon>
-          <div matListItemTitle>{{u.username}}</div>
+          <div matListItemTitle class="list-item-content">
+            <span class="username-text">{{u.username}}</span>
+            <span class="unread-badge" *ngIf="unreadCounts[u.username]">{{unreadCounts[u.username]}}</span>
+          </div>
           <div matListItemLine class="online-status">Online</div>
         </mat-list-item>
       </mat-list>
@@ -31,16 +49,26 @@
 
     <!-- CHAT AREA -->
     <div class="chat-area">
+      <!-- Active Chat Header Indicator -->
+      <div
+        style="padding: 12px 20px; background-color: #f5f5f5; border-bottom: 1px solid #ddd; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+        <mat-icon color="primary">{{ selectedUser ? 'person' : 'group' }}</mat-icon>
+        {{ selectedUser ? ' ' + selectedUser : 'Global Public Chat' }}
+      </div>
+
       <!-- #scrollMe template reference variable is linked to @ViewChild in .ts -->
       <div class="messages" #scrollMe>
-        <div
-          *ngFor="let m of messages"
-          class="message-wrapper"
-          [class.me]="(m.username || m.user) === currentUser"
-        >
+        <div *ngFor="let m of messages" class="message-wrapper" [class.me]="(m.username || m.user) === currentUser">
           <div class="message">
             <div class="msg-sender" *ngIf="(m.username || m.user) !== currentUser">{{m.username || m.user}}</div>
-            <div class="msg-content">{{m.text || m.message}}</div>
+            <div class="msg-content-wrapper"
+              style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div class="msg-content">{{m.text || m.message}}</div>
+              <mat-icon class="delete-btn" *ngIf="(m.username || m.user) === currentUser && m._id"
+                (click)="deleteMessage(m._id)" style="cursor: pointer; font-size: 18px; width: 18px; height: 18px;"
+                title="Delete">delete
+              </mat-icon>
+            </div>
           </div>
         </div>
       </div>
@@ -48,11 +76,7 @@
       <!-- INPUT -->
       <div class="input-area">
         <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic">
-          <input matInput
-            [(ngModel)]="message"
-            placeholder="Type your message..."
-            (keyup.enter)="send()"
-          >
+          <input matInput [(ngModel)]="message" placeholder="Type your message..." (keyup.enter)="send()">
         </mat-form-field>
         <button mat-fab color="primary" (click)="send()" [disabled]="!message.trim()">
           <mat-icon>send</mat-icon>
