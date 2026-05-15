@@ -1,0 +1,63 @@
+<div class="chat-wrapper">
+  <mat-toolbar color="primary" class="chat-header">
+    <span>Realtime Chat System</span>
+    <span class="spacer"></span>
+    <div class="header-actions">
+      <div class="current-user-badge" *ngIf="currentUser">
+        <mat-icon>account_circle</mat-icon>
+        {{currentUser}}
+      </div>
+      <button mat-stroked-button class="logout-btn" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </div>
+  </mat-toolbar>
+
+  <div class="container mat-elevation-z4">
+    <!-- USERS SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3>Online Users</h3>
+      </div>
+      <mat-list>
+        <mat-list-item *ngFor="let u of users">
+          <mat-icon matListItemIcon color="primary">person</mat-icon>
+          <div matListItemTitle>{{u.username}}</div>
+          <div matListItemLine class="online-status">Online</div>
+        </mat-list-item>
+      </mat-list>
+    </div>
+
+    <!-- CHAT AREA -->
+    <div class="chat-area">
+      <!-- #scrollMe template reference variable is linked to @ViewChild in .ts -->
+      <div class="messages" #scrollMe>
+        <div
+          *ngFor="let m of messages"
+          class="message-wrapper"
+          [class.me]="(m.username || m.user) === currentUser"
+        >
+          <div class="message">
+            <div class="msg-sender" *ngIf="(m.username || m.user) !== currentUser">{{m.username || m.user}}</div>
+            <div class="msg-content">{{m.text || m.message}}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INPUT -->
+      <div class="input-area">
+        <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic">
+          <input matInput
+            [(ngModel)]="message"
+            placeholder="Type your message..."
+            (keyup.enter)="send()"
+          >
+        </mat-form-field>
+        <button mat-fab color="primary" (click)="send()" [disabled]="!message.trim()">
+          <mat-icon>send</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

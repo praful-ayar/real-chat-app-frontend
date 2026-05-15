@@ -1,0 +1,38 @@
+<div class="login-wrapper">
+  <div class="top-band"></div>
+
+  <mat-card class="login-card mat-elevation-z12">
+
+    <div class="brand-container">
+      <div class="icon-circle">
+        <mat-icon>forum</mat-icon>
+      </div>
+      <h2>Realtime Chat</h2>
+      <p>{{ isLoginMode ? 'Login to your account' : 'Create a new account' }}</p>
+    </div>
+
+    <mat-card-content class="login-content">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Username</mat-label>
+        <input matInput [(ngModel)]="username" placeholder="e.g. John Doe" autocomplete="off" (keyup.enter)="submit()">
+        <mat-icon matPrefix color="primary">person</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" [(ngModel)]="password" placeholder="Enter your password" (keyup.enter)="submit()">
+        <mat-icon matPrefix color="primary">lock</mat-icon>
+      </mat-form-field>
+      
+      <button mat-flat-button color="primary" class="join-btn" (click)="submit()" [disabled]="!username.trim() || !password.trim() || isLoading">
+        {{ isLoading ? 'Please wait...' : (isLoginMode ? 'Login' : 'Register') }}
+      </button>
+
+      <div class="toggle-mode">
+        <span *ngIf="isLoginMode">Don't have an account? <a href="javascript:void(0)" (click)="toggleMode()">Register</a></span>
+        <span *ngIf="!isLoginMode">Already have an account? <a href="javascript:void(0)" (click)="toggleMode()">Login</a></span>
+      </div>
+    </mat-card-content>
+
+  </mat-card>
+</div>
