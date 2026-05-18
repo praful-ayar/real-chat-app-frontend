@@ -12,26 +12,73 @@
     </div>
 
     <mat-card-content class="login-content">
+      <!-- <form #loginForm="ngForm"> -->
       <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email</mat-label>
+        <input matInput [(ngModel)]="email" email placeholder="Enter your email" autocomplete="off"
+          (keyup.enter)="submit()" required #emailRef="ngModel">
+        <mat-icon matPrefix color="primary">email</mat-icon>
+        <mat-error *ngIf="emailRef.touched && emailRef.errors?.['required']">
+          Email is required
+        </mat-error>
+      </mat-form-field>
+      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width">
+        <mat-label>First Name</mat-label>
+        <input matInput [(ngModel)]="firstname" placeholder="Enter your first name" autocomplete="off"
+          (keyup.enter)="submit()" #firstnameRef="ngModel" required>
+        <mat-icon matPrefix color="primary">person</mat-icon>
+        <mat-error *ngIf="firstnameRef.touched && firstnameRef.errors?.['required']">
+          First name is required
+        </mat-error>
+      </mat-form-field>
+      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width">
+        <mat-label>Last Name*</mat-label>
+        <input matInput [(ngModel)]="lastname" placeholder="Enter your last name" autocomplete="off"
+          (keyup.enter)="submit()" #lastnameRef="ngModel" required>
+        <mat-icon matPrefix color="primary">person</mat-icon>
+        <mat-error *ngIf="lastnameRef.touched && lastnameRef.errors?.['required']">
+          Last name is required
+        </mat-error>
+      </mat-form-field>
+
+      <!-- <mat-form-field appearance="outline" class="full-width">
         <mat-label>Username</mat-label>
         <input matInput [(ngModel)]="username" placeholder="e.g. John Doe" autocomplete="off" (keyup.enter)="submit()">
         <mat-icon matPrefix color="primary">person</mat-icon>
-      </mat-form-field>
+      </mat-form-field> -->
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Password</mat-label>
-        <input matInput type="password" [(ngModel)]="password" placeholder="Enter your password" (keyup.enter)="submit()">
+        <input matInput type="password" [(ngModel)]="password" placeholder="Enter your password"
+          (keyup.enter)="submit()" #passwordRef="ngModel" required>
         <mat-icon matPrefix color="primary">lock</mat-icon>
+        <mat-error *ngIf="passwordRef.touched && passwordRef.errors?.['required']">
+          Password is required
+        </mat-error>
       </mat-form-field>
-      
-      <button mat-flat-button color="primary" class="join-btn" (click)="submit()" [disabled]="!username.trim() || !password.trim() || isLoading">
+
+      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width">
+        <mat-label>Confirm Password</mat-label>
+        <input matInput type="password" [(ngModel)]="confirmpassword" placeholder="Enter your confirm password"
+          (keyup.enter)="submit()" #confirmpasswordRef="ngModel" required>
+        <mat-icon matPrefix color="primary">lock</mat-icon>
+        <mat-error *ngIf="confirmpasswordRef.touched && confirmpasswordRef.errors?.['required']">
+          Confirm Password is required
+        </mat-error>
+      </mat-form-field>
+
+      <button mat-flat-button color="primary" class="join-btn" (click)="submit()"
+        [disabled]="!email || !password.trim() || isLoading">
         {{ isLoading ? 'Please wait...' : (isLoginMode ? 'Login' : 'Register') }}
       </button>
 
       <div class="toggle-mode">
-        <span *ngIf="isLoginMode">Don't have an account? <a href="javascript:void(0)" (click)="toggleMode()">Register</a></span>
-        <span *ngIf="!isLoginMode">Already have an account? <a href="javascript:void(0)" (click)="toggleMode()">Login</a></span>
+        <span *ngIf="isLoginMode">Don't have an account? <a href="javascript:void(0)"
+            (click)="toggleMode()">Register</a></span>
+        <span *ngIf="!isLoginMode">Already have an account? <a href="javascript:void(0)"
+            (click)="toggleMode()">Login</a></span>
       </div>
+      <!-- </form> -->
     </mat-card-content>
 
   </mat-card>

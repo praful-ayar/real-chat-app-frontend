@@ -1,86 +1,205 @@
 <div class="chat-wrapper">
-  <mat-toolbar color="primary" class="chat-header">
-    <span>Realtime Chat System</span>
-    <span class="spacer"></span>
-    <div class="header-actions">
-      <div class="current-user-badge" *ngIf="currentUser">
-        <mat-icon>account_circle</mat-icon>
-        {{currentUser}}
-      </div>
-      <button mat-stroked-button class="logout-btn" (click)="logout()">
-        <mat-icon>logout</mat-icon>
-        <span>Logout</span>
-      </button>
-    </div>
-  </mat-toolbar>
-
   <div class="container mat-elevation-z4">
     <!-- USERS SIDEBAR -->
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <h3>Online Users</h3>
+    <div class="sidebar" style="display: flex; flex-direction: column; justify-content: space-between;">
+      <div style="flex: 1; overflow-y: auto;">
+        <div class="sidebar-header">
+          <h3>Online Users</h3>
+        </div>
+        <mat-list>
+          <!-- Public Chat Option -->
+          <mat-list-item (click)="selectUser(null)" [style.background]="selectedUser === null ? '#e0f7fa' : ''"
+            style="cursor: pointer;" class="compact-list-item">
+            <mat-icon matListItemIcon color="primary">group</mat-icon>
+            <div matListItemTitle class="list-item-content">
+              <span>Public Chat</span>
+              <span class="unread-badge" *ngIf="unreadCounts['public']">{{unreadCounts['public']}}</span>
+            </div>
+          </mat-list-item>
+
+          <mat-divider style="margin: 10px 0;"></mat-divider>
+
+          <!-- Online Users List -->
+          <mat-list-item *ngFor="let u of users" (click)="selectUser(u.email, u.firstname, u.lastname, u.profileImage)"
+            [style.background]="selectedUser === u.email ? '#e0f7fa' : ''" style="cursor: pointer;"
+            class="compact-list-item">
+            <img *ngIf="u.profileImage" [src]="u.profileImage" matListItemIcon
+              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+            <mat-icon *ngIf="!u.profileImage" matListItemIcon color="primary">person</mat-icon>
+            <div matListItemTitle class="list-item-content">
+              <span class="username-text">{{u.firstname}} {{u.lastname}}</span>
+              <span class="unread-badge" *ngIf="unreadCounts[u.email]">{{unreadCounts[u.email]}}</span>
+            </div>
+            <div matListItemLine class="online-status">Online</div>
+          </mat-list-item>
+        </mat-list>
       </div>
-      <mat-list>
-        <!-- Public Chat Option -->
-        <mat-list-item (click)="selectUser(null)" [style.background]="selectedUser === null ? '#e0f7fa' : ''"
-          style="cursor: pointer;" class="compact-list-item">
-          <mat-icon matListItemIcon color="primary">group</mat-icon>
-          <div matListItemTitle class="list-item-content">
-            <span>Public Chat</span>
-            <span class="unread-badge" *ngIf="unreadCounts['public']">{{unreadCounts['public']}}</span>
-          </div>
-        </mat-list-item>
 
-        <mat-divider style="margin: 10px 0;"></mat-divider>
-
-        <!-- Online Users List -->
-        <mat-list-item *ngFor="let u of users" (click)="selectUser(u.username)"
-          [style.background]="selectedUser === u.username ? '#e0f7fa' : ''" style="cursor: pointer;"
-          class="compact-list-item">
-          <mat-icon matListItemIcon color="primary">person</mat-icon>
-          <div matListItemTitle class="list-item-content">
-            <span class="username-text">{{u.username}}</span>
-            <span class="unread-badge" *ngIf="unreadCounts[u.username]">{{unreadCounts[u.username]}}</span>
+      <!-- Profile Settings Footer -->
+      <div class="sidebar-footer" style="padding: 15px; border-top: 1px solid #ddd; background: #fafafa;">
+        <!-- Profile Info & Settings Trigger -->
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img *ngIf="profileImage" [src]="profileImage"
+              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+            <mat-icon *ngIf="!profileImage" color="primary"
+              style="font-size: 40px; width: 40px; height: 40px;">account_circle</mat-icon>
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-weight: 500; font-size: 14px; text-transform: capitalize;">{{currentUserName}}</span>
+            </div>
           </div>
-          <div matListItemLine class="online-status">Online</div>
-        </mat-list-item>
-      </mat-list>
+          <!-- Menu Trigger Button -->
+          <button mat-icon-button color="primary" [matMenuTriggerFor]="settingsMenu" title="Settings">
+            <mat-icon>settings</mat-icon>
+          </button>
+
+          <!-- Settings Menu -->
+          <mat-menu #settingsMenu="matMenu" yPosition="above" xPosition="before">
+            <button mat-menu-item (click)="toggleProfileSettings()">
+              <mat-icon>account_circle</mat-icon>
+              <span>Profile Settings</span>
+            </button>
+            <button mat-menu-item (click)="logout()">
+              <mat-icon color="warn">logout</mat-icon>
+              <span style="color: #f44336;">Logout</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
     </div>
 
     <!-- CHAT AREA -->
     <div class="chat-area">
       <!-- Active Chat Header Indicator -->
-      <div
-        style="padding: 12px 20px; background-color: #f5f5f5; border-bottom: 1px solid #ddd; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-        <mat-icon color="primary">{{ selectedUser ? 'person' : 'group' }}</mat-icon>
-        {{ selectedUser ? ' ' + selectedUser : 'Global Public Chat' }}
+      <div style="padding: 12px 20px;
+         background-color: #f5f5f5;
+         border-bottom: 1px solid #ddd;
+         font-weight: 500;
+         display: flex;
+         align-items: center;
+         gap: 10px;
+         text-transform: capitalize;">
+
+        <!-- Selected User -->
+        <ng-container *ngIf="selectedUser; else globalChat">
+
+          <img *ngIf="selectedUserImage" [src]="selectedUserImage"
+            style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+
+          <mat-icon *ngIf="!selectedUserImage" color="primary">
+            account_circle
+          </mat-icon>
+
+          <span>{{ selectedUserName }}</span>
+
+        </ng-container>
+
+        <!-- Global Chat -->
+        <ng-template #globalChat>
+          <mat-icon color="primary">group</mat-icon>
+          Global Public Chat
+        </ng-template>
+
       </div>
+      <!-- <div
+        style="padding: 12px 20px; background-color: #f5f5f5; border-bottom: 1px solid #ddd; font-weight: 500; display: flex; align-items: center; gap: 8px; text-transform: capitalize;">
+        <mat-icon color="primary">{{ selectedUser ? 'person' : 'group' }}</mat-icon>
+        {{ selectedUser ? ' ' + selectedUserName : 'Global Public Chat' }}
+      </div> -->
 
       <!-- #scrollMe template reference variable is linked to @ViewChild in .ts -->
       <div class="messages" #scrollMe>
-        <div *ngFor="let m of messages" class="message-wrapper" [class.me]="(m.username || m.user) === currentUser">
+        <div *ngFor="let m of messages" class="message-wrapper"
+          [class.me]="(m.email || m.username || m.user) === currentUser">
           <div class="message">
-            <div class="msg-sender" *ngIf="(m.username || m.user) !== currentUser">{{m.username || m.user}}</div>
+            <div class="msg-sender" *ngIf="(m.email || m.username || m.user) !== currentUser">{{m.firstname}}
+              {{m.lastname}}</div>
             <div class="msg-content-wrapper"
               style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-              <div class="msg-content">{{m.text || m.message}}</div>
-              <mat-icon class="delete-btn" *ngIf="(m.username || m.user) === currentUser && m._id"
+              <div class="msg-content">
+                <!-- Image/GIF Check: Agar Media hai to image tag render hoga, nahi to plain text -->
+                <ng-container *ngIf="isMedia(m.text || m.message); else textMsg">
+                  <img [src]="m.text || m.message" style="max-width: 200px; max-height: 200px; border-radius: 8px;"
+                    alt="GIF/Image" />
+                </ng-container>
+                <ng-template #textMsg>{{m.text || m.message}}</ng-template>
+              </div>
+              <mat-icon class="delete-btn" *ngIf="(m.email || m.username || m.user) === currentUser && m._id"
                 (click)="deleteMessage(m._id)" style="cursor: pointer; font-size: 18px; width: 18px; height: 18px;"
                 title="Delete">delete
               </mat-icon>
             </div>
           </div>
         </div>
+        
+        <!-- Typing Indicator -->
+        <div class="typing-indicator" *ngIf="typingUsers.length > 0">
+           <div class="typing-bubble">
+             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+           </div>
+           <span class="typing-text">{{ typingUsers.join(', ') }} {{ typingUsers.length > 1 ? 'are' : 'is' }} typing...</span>
+        </div>
+        
       </div>
 
       <!-- INPUT -->
-      <div class="input-area">
+      <div class="input-area" style="position: relative;">
+
+        <!-- Extracted Emoji & GIF Picker Component -->
+        <app-emoji-picker *ngIf="showEmojis" (emojiSelected)="addEmoji($event)" (gifSelected)="sendGifDirect($event)">
+        </app-emoji-picker>
+
+        <button mat-icon-button color="primary" (click)="toggleEmojis()" title="Emoji & GIF Picker">
+          <mat-icon>sentiment_satisfied_alt</mat-icon>
+        </button>
+
         <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic">
-          <input matInput [(ngModel)]="message" placeholder="Type your message..." (keyup.enter)="send()">
+          <input matInput [(ngModel)]="message" placeholder="Type your message..." (input)="onTyping()" (keyup.enter)="send()">
         </mat-form-field>
         <button mat-fab color="primary" (click)="send()" [disabled]="!message.trim()">
           <mat-icon>send</mat-icon>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Centered Profile Settings Dialog/Modal -->
+  <div *ngIf="showProfileSettings" class="modal-overlay">
+    <div class="modal-content mat-elevation-z8">
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+        <h4 style="margin: 0; font-size: 18px; font-weight: 500;">Profile Settings</h4>
+        <button mat-icon-button (click)="toggleProfileSettings()" title="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div style="text-align: center; position: relative; margin-bottom: 20px;">
+        <img *ngIf="profileImage" [src]="profileImage"
+          style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #00acc1;">
+        <mat-icon *ngIf="!profileImage" color="primary"
+          style="font-size: 100px; width: 100px; height: 100px;">account_circle</mat-icon>
+        <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*" style="display: none;">
+        <button mat-mini-fab color="accent"
+          style="position: absolute; bottom: 0; left: 50%; transform: translateX(20px) scale(0.8);"
+          (click)="fileInput.click()">
+          <mat-icon>edit</mat-icon>
+        </button>
+      </div>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width: 100%; margin-bottom: 15px;">
+        <mat-label>First Name</mat-label>
+        <input matInput [(ngModel)]="editFirstname">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width: 100%; margin-bottom: 20px;">
+        <mat-label>Last Name</mat-label>
+        <input matInput [(ngModel)]="editLastname">
+      </mat-form-field>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button mat-stroked-button (click)="toggleProfileSettings()">Cancel</button>
+        <button mat-flat-button color="primary" (click)="saveProfile()">Save Changes</button>
       </div>
     </div>
   </div>

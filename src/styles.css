@@ -12,3 +12,21 @@ body {
   font-family: Roboto, "Helvetica Neue", sans-serif;
   background-color: #f0f2f5;
 }
+
+/* Custom Theme for Error Snackbar */
+.error-snackbar {
+  --mdc-snackbar-container-color: #f44336; /* Error Red background */
+  --mdc-snackbar-supporting-text-color: #ffffff;
+}
+.error-snackbar .mdc-snackbar__surface {
+  background-color: #f44336 !important; /* Fallback override for background */
+}
+
+/* Custom Theme for Success Snackbar */
+.success-snackbar {
+  --mdc-snackbar-container-color: #4caf50; /* Success Green */
+  --mdc-snackbar-supporting-text-color: #ffffff;
+}
+.success-snackbar .mdc-snackbar__surface {
+  background-color: #4caf50 !important; /* Fallback override for background */
+}
