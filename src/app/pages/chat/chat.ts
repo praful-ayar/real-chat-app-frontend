@@ -1,4 +1,4 @@
-import { Component, NgZone, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, NgZone, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -28,6 +28,10 @@ export interface ChatMessage {
   text?: string;       // New API payload support
   receiver?: string;   // Private message receiver
   timestamp?: Date | string | number;
+  // Reply functionality fields
+  replyTo?: string;
+  replyToText?: string;
+  replyToSender?: string;
 }
 
 @Component({
@@ -51,6 +55,9 @@ export interface ChatMessage {
 export class Chat implements OnInit, OnDestroy {
 
   @ViewChild('scrollMe') private myScrollContainer!: ElementRef;
+  @ViewChild('messageInput') messageInput!: ElementRef;
+  @ViewChild('emojiToggleButton', { read: ElementRef }) emojiToggleButton!: ElementRef;
+  @ViewChild('emojiPicker', { read: ElementRef }) emojiPicker!: ElementRef;
   message = '';
   messages: ChatMessage[] = [];
   users: any[] = [];
@@ -70,6 +77,8 @@ export class Chat implements OnInit, OnDestroy {
 
   typingUsers: string[] = [];
   typingTimeout: any;
+
+  replyingToMessage: ChatMessage | null = null;
 
   constructor(
     private socket: SocketService,
@@ -268,12 +277,56 @@ export class Chat implements OnInit, OnDestroy {
     }
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    // Agar picker khula hai aur click bahar hua hai to use band kar do
+    if (this.showEmojis && this.emojiToggleButton && this.emojiPicker) {
+      const clickedInsideButton = this.emojiToggleButton.nativeElement.contains(event.target as Node);
+      const clickedInsidePicker = this.emojiPicker.nativeElement.contains(event.target as Node);
+
+      if (!clickedInsideButton && !clickedInsidePicker) {
+        this.zone.run(() => {
+          this.showEmojis = false;
+        });
+      }
+    }
+  }
+
   toggleEmojis() {
     this.showEmojis = !this.showEmojis;
   }
 
   addEmoji(emoji: string) {
     this.message += emoji;
+    this.messageInput.nativeElement.focus(); // Emoji select karne ke baad input field ko focus karein
+  }
+
+  startReply(message: ChatMessage) {
+    this.replyingToMessage = message;
+    this.messageInput.nativeElement.focus();
+  }
+
+  cancelReply() {
+    this.replyingToMessage = null;
+  }
+
+  getReplySenderName(message: ChatMessage | null): string {
+    if (!message) return '';
+    return message.firstname || (message.email || message.user)?.split('@')[0] || 'User';
+  }
+
+  scrollToMessage(messageId: string | undefined) {
+    if (!messageId) return;
+    const element = document.getElementById(`msg-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Add a temporary highlight effect
+      const messageBubble = element.querySelector('.message');
+      if (messageBubble) {
+        messageBubble.classList.add('highlight');
+        setTimeout(() => messageBubble.classList.remove('highlight'), 1500);
+      }
+    }
   }
 
   onTyping() {
@@ -317,6 +370,18 @@ export class Chat implements OnInit, OnDestroy {
     return false;
   }
 
+  isOnlyEmoji(text: string | undefined): boolean {
+    if (!text) return false;
+    const trimmed = text.trim();
+    if (trimmed.length === 0) return false;
+
+    // This regex checks if the string consists ONLY of one or more emojis and whitespace.
+    const emojiOnlyRegex = /^(\p{Emoji_Presentation}|\p{Extended_Pictographic}|\u200d|\ufe0f|\s)+$/u;
+
+    // We also check that it's not just whitespace
+    return emojiOnlyRegex.test(trimmed) && trimmed.replace(/\s/g, '').length > 0;
+  }
+
   async deleteMessage(messageId: string | undefined) {
     if (!messageId) return;
     try {
@@ -334,6 +399,19 @@ export class Chat implements OnInit, OnDestroy {
   async send() {
     if (!this.message.trim() || !this.currentUser) return;
 
+    const payload: any = {
+      email: this.currentUser,
+      text: this.message.trim(),
+      receiver: this.selectedUser
+    };
+
+    // Agar reply kar rahe hain, to payload me jankari add karein
+    if (this.replyingToMessage) {
+      payload.replyTo = this.replyingToMessage._id;
+      payload.replyToText = this.replyingToMessage.text || this.replyingToMessage.message;
+      payload.replyToSender = this.replyingToMessage.firstname || (this.replyingToMessage.email || this.replyingToMessage.user)?.split('@')[0];
+    }
+
     const msgText = this.message.trim();
     this.message = ''; // Clear input immediately for better UX
     this.showEmojis = false; // Send karne ke baad emoji picker hide kar do
@@ -346,16 +424,14 @@ export class Chat implements OnInit, OnDestroy {
       receiver: this.selectedUser
     });
 
+    this.cancelReply(); // Reply state ko reset karein
+
     // Send to REST API
     try {
       const response = await fetch(`${environment.apiUrl}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: this.currentUser,
-          text: msgText,
-          receiver: this.selectedUser
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {

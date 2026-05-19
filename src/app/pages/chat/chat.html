@@ -101,34 +101,41 @@
         </ng-template>
 
       </div>
-      <!-- <div
-        style="padding: 12px 20px; background-color: #f5f5f5; border-bottom: 1px solid #ddd; font-weight: 500; display: flex; align-items: center; gap: 8px; text-transform: capitalize;">
-        <mat-icon color="primary">{{ selectedUser ? 'person' : 'group' }}</mat-icon>
-        {{ selectedUser ? ' ' + selectedUserName : 'Global Public Chat' }}
-      </div> -->
 
       <!-- #scrollMe template reference variable is linked to @ViewChild in .ts -->
       <div class="messages" #scrollMe>
-        <div *ngFor="let m of messages" class="message-wrapper"
+        <div *ngFor="let m of messages" class="message-wrapper" [id]="'msg-' + m._id"
           [class.me]="(m.email || m.username || m.user) === currentUser">
-          <div class="message">
+          <div class="message" [class.media-only]="isMedia(m.text || m.message) || isOnlyEmoji(m.text || m.message)">
             <div class="msg-sender" *ngIf="(m.email || m.username || m.user) !== currentUser">{{m.firstname}}
               {{m.lastname}}</div>
+            <!-- Reply Preview inside message bubble -->
+            <div *ngIf="m.replyTo" class="reply-preview" (click)="scrollToMessage(m.replyTo)">
+              <div class="reply-sender">{{ m.replyToSender }}</div>
+              <div class="reply-text">
+                <ng-container *ngIf="isMedia(m.replyToText); else textReply">
+                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
+                </ng-container>
+                <ng-template #textReply>
+                  {{ m.replyToText | slice:0:100 }}{{ (m.replyToText && m.replyToText.length > 100) ? '...' : '' }}
+                </ng-template>
+              </div>
+            </div>
             <div class="msg-content-wrapper"
               style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <div class="msg-content">
                 <!-- Image/GIF Check: Agar Media hai to image tag render hoga, nahi to plain text -->
                 <ng-container *ngIf="isMedia(m.text || m.message); else textMsg">
-                  <img [src]="m.text || m.message" style="max-width: 200px; max-height: 200px; border-radius: 8px;"
+                  <img [src]="m.text || m.message" class="message-media"
                     alt="GIF/Image" />
                 </ng-container>
                 <ng-template #textMsg>{{m.text || m.message}}</ng-template>
               </div>
-              <mat-icon class="delete-btn" *ngIf="(m.email || m.username || m.user) === currentUser && m._id"
-                (click)="deleteMessage(m._id)" style="cursor: pointer; font-size: 18px; width: 18px; height: 18px;"
-                title="Delete">delete
-              </mat-icon>
             </div>
+          </div>
+          <div class="message-actions">
+            <button mat-icon-button class="action-btn" (click)="startReply(m)" title="Reply"><mat-icon>reply</mat-icon></button>
+            <button mat-icon-button class="action-btn" *ngIf="m._id" (click)="deleteMessage(m._id)" title="Delete"><mat-icon>delete</mat-icon></button>
           </div>
         </div>
         
@@ -143,22 +150,45 @@
       </div>
 
       <!-- INPUT -->
-      <div class="input-area" style="position: relative;">
+      <div class="input-area-container">
+        <!-- Reply Preview Bar -->
+        <div *ngIf="replyingToMessage" class="reply-bar">
+          <div class="reply-bar-content">
+            <mat-icon class="reply-bar-icon">reply</mat-icon>
+            <div class="reply-bar-text">
+              <div class="reply-bar-sender">Replying to {{ getReplySenderName(replyingToMessage) }}</div>
+              <div class="reply-bar-message">
+                <ng-container *ngIf="isMedia(replyingToMessage.text || replyingToMessage.message); else textReplyBar">
+                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
+                </ng-container>
+                <ng-template #textReplyBar>
+                  {{ (replyingToMessage.text || replyingToMessage.message) | slice:0:100 }}{{ ((replyingToMessage.text || replyingToMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
+                </ng-template>
+              </div>
+            </div>
+          </div>
+          <button mat-icon-button (click)="cancelReply()" title="Cancel Reply">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="input-area" style="position: relative;">
 
         <!-- Extracted Emoji & GIF Picker Component -->
-        <app-emoji-picker *ngIf="showEmojis" (emojiSelected)="addEmoji($event)" (gifSelected)="sendGifDirect($event)">
+        <app-emoji-picker *ngIf="showEmojis" #emojiPicker (emojiSelected)="addEmoji($event)" (gifSelected)="sendGifDirect($event)">
         </app-emoji-picker>
 
-        <button mat-icon-button color="primary" (click)="toggleEmojis()" title="Emoji & GIF Picker">
+        <button mat-icon-button color="primary" #emojiToggleButton (click)="toggleEmojis()" title="Emoji & GIF Picker">
           <mat-icon>sentiment_satisfied_alt</mat-icon>
         </button>
 
         <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic">
-          <input matInput [(ngModel)]="message" placeholder="Type your message..." (input)="onTyping()" (keyup.enter)="send()">
+          <input #messageInput matInput [(ngModel)]="message" placeholder="Type your message..." (input)="onTyping()" (keyup.enter)="send()">
         </mat-form-field>
         <button mat-fab color="primary" (click)="send()" [disabled]="!message.trim()">
           <mat-icon>send</mat-icon>
         </button>
+        </div>
       </div>
     </div>
   </div>

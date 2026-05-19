@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, OnInit } from '@angular/core';
+import { Component, EventEmitter, Output, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
@@ -17,6 +17,8 @@ export class EmojiPickerComponent implements OnInit {
   pickerTab: 'emoji' | 'gif' = 'emoji';
   private apiUrl = environment.apiUrl;
   isLoadingGifs = true;
+  searchQuery = '';
+  typingTimer: any;
 
   emojiCategories = [
     { name: 'Smileys & Emotion', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '☺️', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃'] },
@@ -28,7 +30,7 @@ export class EmojiPickerComponent implements OnInit {
 
   trendingGifs: string[] = [];
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private cdr: ChangeDetectorRef) { }
 
   ngOnInit() {
     this.loadGifs();
@@ -36,18 +38,49 @@ export class EmojiPickerComponent implements OnInit {
 
   loadGifs() {
     this.isLoadingGifs = true;
-    this.http.get<{ url: string }[]>(`${this.apiUrl}/gifs`).subscribe({
+    this.cdr.detectChanges();
+    this.http.get<{ url: string }[]>(`${this.apiUrl}/gifs/trending`).subscribe({
       next: (gifs) => {
         this.trendingGifs = gifs.map(g => g.url);
         this.isLoadingGifs = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Failed to load GIFs', err);
         this.isLoadingGifs = false;
         // Fallback to a default GIF in case of an error
         this.trendingGifs = ['https://media.giphy.com/media/3o7aD2saalEvTehEX2/giphy.gif'];
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  onSearchGif(event: Event) {
+    const query = (event.target as HTMLInputElement).value;
+    this.searchQuery = query;
+
+    if (this.typingTimer) clearTimeout(this.typingTimer);
+
+    // Debounce to prevent too many API calls
+    this.typingTimer = setTimeout(() => {
+      if (query.trim() === '') {
+        this.loadGifs(); // Load trending GIFs if search is empty
+      } else {
+        // this.isLoadingGifs = true;
+        this.http.get<{ url: string }[]>(`${this.apiUrl}/gifs/search?q=${query}`).subscribe({
+          next: (gifs) => {
+            this.trendingGifs = gifs.map(g => g.url);
+            this.isLoadingGifs = false;
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            console.error('Failed to search GIFs', err);
+            this.isLoadingGifs = false;
+            this.cdr.detectChanges();
+          }
+        });
+      }
+    }, 500); // Wait 500ms before making the API request
   }
 
   selectEmoji(emoji: string) {
