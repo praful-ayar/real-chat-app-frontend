@@ -30,10 +30,13 @@ export interface ChatMessage {
   text?: string;       // New API payload support
   receiver?: string;   // Private message receiver
   timestamp?: Date | string | number;
+  createdAt?: Date | string | number;
   // Reply functionality fields
   replyTo?: string;
   replyToText?: string;
   replyToSender?: string;
+  isEdited?: boolean;
+  status?: 'sent' | 'delivered' | 'seen';
 }
 
 @Component({
@@ -64,6 +67,7 @@ export class Chat implements OnInit, OnDestroy {
   @ViewChild('emojiPicker', { read: ElementRef }) emojiPicker!: ElementRef;
   @ViewChild('video') video!: ElementRef;
   @ViewChild('canvas') canvas!: ElementRef;
+  @ViewChild('mediaInput') mediaInput!: ElementRef;
 
   stream: any;
   message = '';
@@ -88,8 +92,12 @@ export class Chat implements OnInit, OnDestroy {
   typingTimeout: any;
 
   replyingToMessage: ChatMessage | null = null;
+  editingMessage: ChatMessage | null = null;
   autoTranslate: boolean = false;
   isTranslating: boolean = false;
+
+  searchQuery: string = '';
+  searchTimeout: any;
   targetLanguage: string = 'English'; // Default language
   availableLanguages: string[] = ['English', 'Hindi', 'Gujarati', 'Marathi', 'Bengali', 'Spanish', 'French', 'German'];
 
@@ -166,6 +174,19 @@ export class Chat implements OnInit, OnDestroy {
       });
     });
 
+    this.socket.socket.on('messageStatusUpdated', (data: { messageIds: string[], status: string }) => {
+      this.zone.run(() => {
+        let updated = false;
+        this.messages.forEach(m => {
+          if (data.messageIds.includes(m._id!)) {
+            m.status = data.status as any;
+            updated = true;
+          }
+        });
+        if (updated) this.cdr.detectChanges();
+      });
+    });
+
     this.socket.socket.on('privateMessage', (msg: ChatMessage) => {
       this.zone.run(() => {
         // Only show message if we are chatting with that specific user
@@ -174,6 +195,15 @@ export class Chat implements OnInit, OnDestroy {
           (msg.email === this.currentUser && msg.receiver === this.selectedUser)
         ) {
           if (!this.messages.some(m => m._id === msg._id)) {
+            // Agar received message hai, instantly mark as seen
+            if (msg.email !== this.currentUser && msg._id) {
+              this.socket.socket.emit("updateMessageStatus", {
+                messageIds: [msg._id],
+                status: 'seen',
+                senderEmail: msg.email
+              });
+              msg.status = 'seen';
+            }
             this.messages.push(msg);
             this.cdr.detectChanges();
             this.scrollToBottom();
@@ -181,6 +211,13 @@ export class Chat implements OnInit, OnDestroy {
         } else {
           // Agar kisi aur user ka private message aaya to uska unread count badhao
           if (msg.receiver === this.currentUser && msg.email !== this.currentUser) {
+            if (msg._id) {
+              this.socket.socket.emit("updateMessageStatus", {
+                messageIds: [msg._id],
+                status: 'delivered',
+                senderEmail: msg.email
+              });
+            }
             const sender = msg.email!;
             this.unreadCounts = { ...this.unreadCounts, [sender]: (this.unreadCounts[sender] || 0) + 1 };
             localStorage.setItem('unreadCounts', JSON.stringify(this.unreadCounts));
@@ -194,6 +231,18 @@ export class Chat implements OnInit, OnDestroy {
       this.zone.run(() => {
         this.messages = this.messages.filter(m => m._id !== id);
         this.cdr.detectChanges();
+      });
+    });
+
+    this.socket.socket.on('messageEdited', (data: { id: string, text: string }) => {
+      this.zone.run(() => {
+        const msg = this.messages.find(m => m._id === data.id);
+        if (msg) {
+          msg.text = data.text;
+          msg.message = data.text;
+          msg.isEdited = true;
+          this.cdr.detectChanges();
+        }
       });
     });
 
@@ -220,15 +269,40 @@ export class Chat implements OnInit, OnDestroy {
   async loadMessages() {
     try {
       let url = `${environment.apiUrl}/messages`;
+      const params = new URLSearchParams();
       if (this.selectedUser) {
-        url += `?sender=${this.currentUser}&receiver=${this.selectedUser}`;
+        params.append('sender', this.currentUser || '');
+        params.append('receiver', this.selectedUser);
       }
+      if (this.searchQuery && this.searchQuery.trim()) {
+        params.append('search', this.searchQuery.trim());
+      }
+      const qs = params.toString();
+      if (qs) url += `?${qs}`;
 
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         this.zone.run(() => {
           this.messages = data;
+
+          if (this.selectedUser) {
+            const unseenIds = this.messages
+              .filter(m => m.receiver === this.currentUser && m.email === this.selectedUser && m.status !== 'seen')
+              .map(m => m._id!);
+            
+            if (unseenIds.length > 0) {
+              this.socket.socket.emit('updateMessageStatus', {
+                messageIds: unseenIds,
+                status: 'seen',
+                senderEmail: this.selectedUser
+              });
+              this.messages.forEach(m => {
+                if (unseenIds.includes(m._id!)) m.status = 'seen';
+              });
+            }
+          }
+
           this.cdr.detectChanges();
           this.scrollToBottom();
         });
@@ -241,6 +315,7 @@ export class Chat implements OnInit, OnDestroy {
   selectUser(email: string | null, firstname?: string, lastname?: string, profileImage?: string) {
     if (email === this.currentUser) return; // Prevent chatting with self
     this.selectedUser = email;
+    this.searchQuery = '';
     if (email === null) {
       this.selectedUserName = null;
       this.selectedUserImage = null;
@@ -261,15 +336,21 @@ export class Chat implements OnInit, OnDestroy {
       }
     }
 
-    // Chat select karte hi notification badge hata do
     if (email === null) {
       this.unreadCounts = { ...this.unreadCounts, 'public': 0 };
     } else {
       this.unreadCounts = { ...this.unreadCounts, [email]: 0 };
     }
     localStorage.setItem('unreadCounts', JSON.stringify(this.unreadCounts));
-    this.typingUsers = []; // Chat switch karne par pichli typing status clear kar do
+    this.typingUsers = []
     this.loadMessages();
+  }
+
+  onSearchChange() {
+    if (this.searchTimeout) clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(() => {
+      this.loadMessages();
+    }, 400);
   }
 
   toggleProfileSettings() {
@@ -286,8 +367,8 @@ export class Chat implements OnInit, OnDestroy {
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.zone.run(() => {
-          this.profileImage = e.target.result; // Base64 encoding
-          this.cdr.detectChanges(); // Force UI update for the preview
+          this.profileImage = e.target.result; 
+          this.cdr.detectChanges();
         });
       };
       reader.readAsDataURL(file);
@@ -325,7 +406,6 @@ export class Chat implements OnInit, OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
-    // Agar picker khula hai aur click bahar hua hai to use band kar do
     if (this.showEmojis && this.emojiToggleButton && this.emojiPicker) {
       const clickedInsideButton = this.emojiToggleButton.nativeElement.contains(event.target as Node);
       const clickedInsidePicker = this.emojiPicker.nativeElement.contains(event.target as Node);
@@ -344,16 +424,29 @@ export class Chat implements OnInit, OnDestroy {
 
   addEmoji(emoji: string) {
     this.message += emoji;
-    this.messageInput.nativeElement.focus(); // Emoji select karne ke baad input field ko focus karein
+    this.messageInput.nativeElement.focus();
   }
 
   startReply(message: ChatMessage) {
     this.replyingToMessage = message;
+    this.cancelEdit();
     this.messageInput.nativeElement.focus();
   }
 
   cancelReply() {
     this.replyingToMessage = null;
+  }
+
+  startEdit(message: ChatMessage) {
+    this.editingMessage = message;
+    this.message = message.text || message.message || '';
+    this.cancelReply();
+    setTimeout(() => this.messageInput.nativeElement.focus(), 0);
+  }
+
+  cancelEdit() {
+    this.editingMessage = null;
+    this.message = '';
   }
 
   getReplySenderName(message: ChatMessage | null): string {
@@ -405,15 +498,21 @@ export class Chat implements OnInit, OnDestroy {
     }
   }
 
-  isMedia(text: string | undefined): boolean {
-    if (!text) return false;
-    if (text.startsWith('data:image/')) return true; // Base64 Image Support
+  getMediaType(text: string | undefined): 'image' | 'video' | 'audio' | 'file' | 'text' {
+    if (!text) return 'text';
+    if (text.startsWith('data:image/')) return 'image';
+    if (text.startsWith('data:video/')) return 'video';
+    if (text.startsWith('data:audio/')) return 'audio';
+    if (text.startsWith('data:application/') || text.startsWith('data:text/')) return 'file';
+    
     const urlPattern = /^(http|https):\/\/[^ "]+$/;
     if (urlPattern.test(text)) {
-      // Agar link .gif, .jpg hai ya Giphy/Tenor ka media link hai to true return karo
-      return text.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null || text.includes('media.giphy.com') || text.includes('media.tenor.com');
+      if (text.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null || text.includes('media.giphy.com') || text.includes('media.tenor.com')) return 'image';
+      if (text.match(/\.(mp4|webm|ogg)$/i) != null) return 'video';
+      if (text.match(/\.(mp3|wav)$/i) != null) return 'audio';
+      if (text.match(/\.(pdf|doc|docx|xls|xlsx|txt|zip|rar)$/i) != null) return 'file';
     }
-    return false;
+    return 'text';
   }
 
   isOnlyEmoji(text: string | undefined): boolean {
@@ -446,10 +545,10 @@ export class Chat implements OnInit, OnDestroy {
     if (!this.message.trim() || !this.currentUser || this.isTranslating) return;
 
     let textToSend = this.message.trim();
-    this.message = ''; // Clear input immediately for better UX
-    this.showEmojis = false; // Send karne ke baad emoji picker hide kar do
+    this.message = ''; 
+    this.showEmojis = false; 
 
-    if (this.autoTranslate && !this.isMedia(textToSend) && !this.isOnlyEmoji(textToSend)) {
+    if (this.autoTranslate && this.getMediaType(textToSend) === 'text' && !this.isOnlyEmoji(textToSend)) {
       this.isTranslating = true;
       try {
         const transRes = await fetch(`${environment.apiUrl}/translate`, {
@@ -474,14 +573,12 @@ export class Chat implements OnInit, OnDestroy {
       receiver: this.selectedUser
     };
 
-    // Agar reply kar rahe hain, to payload me jankari add karein
     if (this.replyingToMessage) {
       payload.replyTo = this.replyingToMessage._id;
       payload.replyToText = this.replyingToMessage.text || this.replyingToMessage.message;
       payload.replyToSender = this.replyingToMessage.firstname || (this.replyingToMessage.email || this.replyingToMessage.user)?.split('@')[0];
     }
 
-    // Jaise hi message send ho, typing status stop kar do
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
     this.socket.socket.emit('stopTyping', {
       sender: this.currentUser,
@@ -489,7 +586,21 @@ export class Chat implements OnInit, OnDestroy {
       receiver: this.selectedUser
     });
 
-    this.cancelReply(); // Reply state ko reset karein
+    if (this.editingMessage) {
+      try {
+        await fetch(`${environment.apiUrl}/messages/${this.editingMessage._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: textToSend })
+        });
+      } catch (err) {
+        console.error('Failed to edit message:', err);
+      }
+      this.cancelEdit();
+      return;
+    }
+
+    this.cancelReply();
 
     // Send to REST API
     try {
@@ -524,13 +635,14 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Socket listeners ko remove karna zaroori hai taaki component reload hone par duplicate events fire na hon
     this.socket.socket.off('message');
     this.socket.socket.off('users');
     this.socket.socket.off('messageDeleted');
     this.socket.socket.off('privateMessage');
     this.socket.socket.off('typing');
     this.socket.socket.off('stopTyping');
+    this.socket.socket.off('messageEdited');
+    this.socket.socket.off('messageStatusUpdated');
   }
 
   logout() {
@@ -539,9 +651,39 @@ export class Chat implements OnInit, OnDestroy {
     this.router.navigate(['/']);
   }
 
+  onMediaSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+         alert("File size exceeds 10MB limit.");
+         return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.zone.run(() => {
+          const base64Data = e.target.result;
+          this.sendMediaDirect(base64Data);
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+    if (this.mediaInput) {
+       this.mediaInput.nativeElement.value = '';
+    }
+  }
+
+  sendMediaDirect(base64Data: string) {
+    if (base64Data && base64Data.trim() !== '') {
+      const currentMsg = this.message;
+      this.message = base64Data;
+      this.send(); // Use standard REST sending mechanism so it saves to DB
+      setTimeout(() => { this.message = currentMsg; }, 100);
+    }
+  }
+
   async openCameraModal() {
     this.showCamera = true;
-    this.cdr.detectChanges(); // Force render to make video element available
+    this.cdr.detectChanges();
     await this.startCamera();
   }
 
@@ -551,7 +693,6 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   async startCamera() {
-    // Stop any existing stream before starting a new one
     this.stopCamera();
     this.stream = await navigator.mediaDevices.getUserMedia({
       video: {

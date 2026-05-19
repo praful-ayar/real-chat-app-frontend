@@ -74,68 +74,103 @@
       <div style="padding: 12px 20px;
          background-color: #f5f5f5;
          border-bottom: 1px solid #ddd;
-         font-weight: 500;
          display: flex;
          align-items: center;
-         gap: 10px;
-         text-transform: capitalize;">
+         justify-content: space-between;">
 
-        <!-- Selected User -->
-        <ng-container *ngIf="selectedUser; else globalChat">
+        <div style="display: flex; align-items: center; gap: 10px; font-weight: 500; text-transform: capitalize;">
+          <!-- Selected User -->
+          <ng-container *ngIf="selectedUser; else globalChat">
+            <img *ngIf="selectedUserImage" [src]="selectedUserImage"
+              style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+            <mat-icon *ngIf="!selectedUserImage" color="primary">
+              account_circle
+            </mat-icon>
+            <span>{{ selectedUserName }}</span>
+          </ng-container>
 
-          <img *ngIf="selectedUserImage" [src]="selectedUserImage"
-            style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+          <!-- Global Chat -->
+          <ng-template #globalChat>
+            <mat-icon color="primary">group</mat-icon>
+            Public Chat
+          </ng-template>
+        </div>
 
-          <mat-icon *ngIf="!selectedUserImage" color="primary">
-            account_circle
+        <!-- Search Bar -->
+        <div style="display: flex; align-items: center; background: white; border-radius: 20px; padding: 4px 12px; border: 1px solid #ddd;">
+          <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: #888;">search</mat-icon>
+          <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()" placeholder="Search messages..." 
+                 style="border: none; outline: none; padding: 4px 8px; font-size: 14px; width: 160px; background: transparent;">
+          <mat-icon *ngIf="searchQuery" (click)="searchQuery = ''; loadMessages()" 
+                    style="font-size: 16px; width: 16px; height: 16px; color: #888; cursor: pointer;" title="Clear">
+            close
           </mat-icon>
-
-          <span>{{ selectedUserName }}</span>
-
-        </ng-container>
-
-        <!-- Global Chat -->
-        <ng-template #globalChat>
-          <mat-icon color="primary">group</mat-icon>
-          Public Chat
-        </ng-template>
-
+        </div>
       </div>
 
-      <!-- #scrollMe template reference variable is linked to @ViewChild in .ts -->
       <div class="messages" #scrollMe>
         <div *ngFor="let m of messages" class="message-wrapper" [id]="'msg-' + m._id"
           [class.me]="(m.email || m.username || m.user) === currentUser">
-          <div class="message" [class.media-only]="isMedia(m.text || m.message) || isOnlyEmoji(m.text || m.message)">
+          <div class="message" [class.media-only]="getMediaType(m.text || m.message) === 'image' || getMediaType(m.text || m.message) === 'video' || isOnlyEmoji(m.text || m.message)">
             <div class="msg-sender" *ngIf="(m.email || m.username || m.user) !== currentUser">{{m.firstname}}
               {{m.lastname}}</div>
             <!-- Reply Preview inside message bubble -->
             <div *ngIf="m.replyTo" class="reply-preview" (click)="scrollToMessage(m.replyTo)">
               <div class="reply-sender">{{ m.replyToSender }}</div>
               <div class="reply-text">
-                <ng-container *ngIf="isMedia(m.replyToText); else textReply">
-                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
+                <ng-container [ngSwitch]="getMediaType(m.replyToText)">
+                  <span *ngSwitchCase="'image'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> Image/GIF</span>
+                  <span *ngSwitchCase="'video'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">videocam</mat-icon> Video</span>
+                  <span *ngSwitchCase="'audio'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">audiotrack</mat-icon> Audio</span>
+                  <span *ngSwitchCase="'file'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">insert_drive_file</mat-icon> File</span>
+                  <span *ngSwitchDefault>
+                    {{ m.replyToText | slice:0:100 }}{{ (m.replyToText && m.replyToText.length > 100) ? '...' : '' }}
+                  </span>
                 </ng-container>
-                <ng-template #textReply>
-                  {{ m.replyToText | slice:0:100 }}{{ (m.replyToText && m.replyToText.length > 100) ? '...' : '' }}
-                </ng-template>
               </div>
             </div>
             <div class="msg-content-wrapper"
               style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <div class="msg-content">
-                <!-- Image/GIF Check: Agar Media hai to image tag render hoga, nahi to plain text -->
-                <ng-container *ngIf="isMedia(m.text || m.message); else textMsg">
-                  <img [src]="m.text || m.message" class="message-media" alt="GIF/Image" />
+                <ng-container [ngSwitch]="getMediaType(m.text || m.message)">
+                  <ng-container *ngSwitchCase="'image'">
+                    <img [src]="m.text || m.message" class="message-media" alt="Image" />
+                  </ng-container>
+                  <ng-container *ngSwitchCase="'video'">
+                    <video [src]="m.text || m.message" class="message-media" controls></video>
+                  </ng-container>
+                  <ng-container *ngSwitchCase="'audio'">
+                    <audio [src]="m.text || m.message" controls style="max-width: 250px; width: 100%;"></audio>
+                  </ng-container>
+                  <ng-container *ngSwitchCase="'file'">
+                    <div class="file-attachment">
+                      <mat-icon>insert_drive_file</mat-icon>
+                      <a [href]="m.text || m.message" download="Attachment" style="color: inherit; text-decoration: none;">Download File</a>
+                    </div>
+                  </ng-container>
+                  <ng-container *ngSwitchDefault>
+                    {{m.text || m.message}} <span *ngIf="m.isEdited" class="edited-tag">(edited)</span>
+                  </ng-container>
                 </ng-container>
-                <ng-template #textMsg>{{m.text || m.message}}</ng-template>
+                
+                <!-- Time & Status Indicators -->
+                <div class="msg-status">
+                  <span class="msg-time">{{ (m.createdAt || m.timestamp) | date:'shortTime' }}</span>
+                  <ng-container *ngIf="(m.email || m.username || m.user) === currentUser">
+                    <mat-icon *ngIf="!m.receiver" class="status-icon">done</mat-icon>
+                    <mat-icon *ngIf="m.receiver && (m.status === 'sent' || !m.status)" class="status-icon">done</mat-icon>
+                    <mat-icon *ngIf="m.receiver && m.status === 'delivered'" class="status-icon">done_all</mat-icon>
+                    <mat-icon *ngIf="m.receiver && m.status === 'seen'" class="status-icon seen">done_all</mat-icon>
+                  </ng-container>
+                </div>
               </div>
             </div>
           </div>
           <div class="message-actions">
             <button mat-icon-button class="action-btn" (click)="startReply(m)"
               title="Reply"><mat-icon>reply</mat-icon></button>
+            <button mat-icon-button class="action-btn" *ngIf="(m.email || m.username || m.user) === currentUser && m._id && getMediaType(m.text || m.message) === 'text' && !isOnlyEmoji(m.text || m.message)" (click)="startEdit(m)"
+              title="Edit"><mat-icon>edit</mat-icon></button>
             <button mat-icon-button class="action-btn" *ngIf="m._id" (click)="deleteMessage(m._id)"
               title="Delete"><mat-icon>delete</mat-icon></button>
           </div>
@@ -152,8 +187,6 @@
 
       </div>
 
-
-
       <!-- INPUT -->
       <div class="input-area-container">
         <!-- Reply Preview Bar -->
@@ -163,14 +196,15 @@
             <div class="reply-bar-text">
               <div class="reply-bar-sender">Replying to {{ getReplySenderName(replyingToMessage) }}</div>
               <div class="reply-bar-message">
-                <ng-container *ngIf="isMedia(replyingToMessage.text || replyingToMessage.message); else textReplyBar">
-                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
+                <ng-container [ngSwitch]="getMediaType(replyingToMessage.text || replyingToMessage.message)">
+                  <span *ngSwitchCase="'image'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> Image/GIF</span>
+                  <span *ngSwitchCase="'video'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">videocam</mat-icon> Video</span>
+                  <span *ngSwitchCase="'audio'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">audiotrack</mat-icon> Audio</span>
+                  <span *ngSwitchCase="'file'" style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">insert_drive_file</mat-icon> File</span>
+                  <span *ngSwitchDefault>
+                    {{ (replyingToMessage.text || replyingToMessage.message) | slice:0:100 }}{{ ((replyingToMessage.text || replyingToMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
+                  </span>
                 </ng-container>
-                <ng-template #textReplyBar>
-                  {{ (replyingToMessage.text || replyingToMessage.message) | slice:0:100 }}{{ ((replyingToMessage.text
-                  || replyingToMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
-                </ng-template>
               </div>
             </div>
           </div>
@@ -179,6 +213,22 @@
           </button>
         </div>
 
+          <!-- Edit Preview Bar -->
+          <div *ngIf="editingMessage" class="reply-bar edit-bar">
+            <div class="reply-bar-content">
+              <mat-icon class="reply-bar-icon">edit</mat-icon>
+              <div class="reply-bar-text">
+                <div class="reply-bar-sender">Editing Message</div>
+                <div class="reply-bar-message">
+                  {{ (editingMessage.text || editingMessage.message) | slice:0:100 }}{{ ((editingMessage.text || editingMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
+                </div>
+              </div>
+            </div>
+            <button mat-icon-button (click)="cancelEdit()" title="Cancel Edit">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
         <div class="input-area" style="position: relative;">
 
           <!-- Extracted Emoji & GIF Picker Component -->
@@ -186,20 +236,28 @@
             (gifSelected)="sendGifDirect($event)">
           </app-emoji-picker>
 
+        <div class="action-buttons-container">
+          <!-- Media Upload Button -->
+          <input type="file" #mediaInput (change)="onMediaSelected($event)" style="display: none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip">
+          <button class="button_ui" mat-icon-button color="primary" (click)="mediaInput.click()" title="Attach File">
+            <mat-icon>attach_file</mat-icon>
+          </button>
+
           <!-- Camera Button -->
-          <button mat-icon-button color="primary" (click)="openCameraModal()" title="Take Photo">
+          <button class="button_ui" mat-icon-button color="primary" (click)="openCameraModal()" title="Take Photo">
             <mat-icon>camera_alt</mat-icon>
           </button>
 
-          <button mat-icon-button color="primary" #emojiToggleButton (click)="toggleEmojis()"
+          <button class="button_ui" mat-icon-button color="primary" #emojiToggleButton (click)="toggleEmojis()"
             title="Emoji & GIF Picker">
             <mat-icon>sentiment_satisfied_alt</mat-icon>
           </button>
 
-          <button mat-icon-button [color]="autoTranslate ? 'accent' : 'primary'"
+          <button class="button_ui" mat-icon-button [color]="autoTranslate ? 'accent' : 'primary'"
             (click)="autoTranslate = !autoTranslate" title="Toggle Auto Translate">
             <mat-icon>translate</mat-icon>
           </button>
+        </div>
 
           <!-- Language Selector Menu (Looks like a small chip and opens upwards) -->
           <button *ngIf="autoTranslate" mat-button [matMenuTriggerFor]="languageMenu"

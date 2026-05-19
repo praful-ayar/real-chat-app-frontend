@@ -128,6 +128,7 @@ body {
   color: #1976d2;
   font-size: 13px;
   margin-bottom: 4px;
+  text-transform: capitalize;
 }
 
 .msg-content {
@@ -174,6 +175,8 @@ body {
 .message-actions {
   display: flex;
   flex-direction: row;
+  align-items: center;
+  gap: 4px;
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease-in-out;
@@ -183,6 +186,21 @@ body {
 .message-actions:hover {
   opacity: 1;
   visibility: visible;
+}
+
+.action-btn {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 4px !important;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+}
+.action-btn mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
 }
 
 .action-btn:hover mat-icon {
@@ -416,6 +434,63 @@ body {
   text-overflow: ellipsis;
 }
 
+.edit-bar {
+  background: #e3f2fd;
+}
+
+.edited-tag {
+  font-size: 11px;
+  color: #888;
+  margin-left: 4px;
+  font-style: italic;
+}
+
+.file-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+.file-attachment a {
+  color: #1976d2;
+  font-weight: 500;
+}
+.message-wrapper.me .file-attachment a {
+  color: #2e7d32;
+}
+
+.msg-status {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 4px;
+  line-height: 1;
+}
+
+.message-wrapper.me .msg-status {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.msg-time {
+  font-size: 10px;
+  padding-top: 2px;
+}
+
+.status-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+}
+
+.status-icon.seen {
+  color: #34b7f1; /* WhatsApp Style Blue Tick */
+}
+
 .message .highlight {
   animation: highlight-anim 1.5s ease-out;
 }
@@ -462,4 +537,26 @@ body {
 
 .spin-animation {
   animation: spin 1s linear infinite;
+}
+
+.action-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.button_ui {
+  width: 40px !important;
+  height: 40px !important;
+  padding: 8px !important;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+}
+
+.button_ui mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  margin: 0;
 }
