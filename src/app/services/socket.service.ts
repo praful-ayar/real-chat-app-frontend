@@ -38,4 +38,13 @@ export class SocketService {
     this.socket.on('oldMessages', callback);
   }
 
+  emit(eventName: string, data: any) {
+    this.socket.emit(eventName, data);
+  }
+
+  // listen method
+  on(eventName: string, callback: any) {
+    this.socket.on(eventName, callback);
+  }
+
 }

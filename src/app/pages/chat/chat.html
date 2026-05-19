@@ -152,6 +152,8 @@
 
       </div>
 
+
+
       <!-- INPUT -->
       <div class="input-area-container">
         <!-- Reply Preview Bar -->
@@ -183,6 +185,11 @@
           <app-emoji-picker *ngIf="showEmojis" #emojiPicker (emojiSelected)="addEmoji($event)"
             (gifSelected)="sendGifDirect($event)">
           </app-emoji-picker>
+
+          <!-- Camera Button -->
+          <button mat-icon-button color="primary" (click)="openCameraModal()" title="Take Photo">
+            <mat-icon>camera_alt</mat-icon>
+          </button>
 
           <button mat-icon-button color="primary" #emojiToggleButton (click)="toggleEmojis()"
             title="Emoji & GIF Picker">
@@ -258,6 +265,25 @@
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button mat-stroked-button (click)="toggleProfileSettings()">Cancel</button>
         <button mat-flat-button color="primary" (click)="saveProfile()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Capture Modal -->
+  <div *ngIf="showCamera" class="modal-overlay">
+    <div class="modal-content mat-elevation-z8" style="width: auto; max-width: 90vw;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+        <h4 style="margin: 0; font-size: 18px; font-weight: 500;">Take a Photo</h4>
+        <button mat-icon-button (click)="closeCameraModal()" title="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+        <video #video autoplay muted playsinline style="max-width: 100%; max-height: 60vh; border-radius: 8px; background: #000;"></video>
+        <canvas #canvas hidden></canvas>
+        <button mat-fab color="accent" (click)="capturePhoto()" title="Capture & Send">
+          <mat-icon>camera</mat-icon>
+        </button>
       </div>
     </div>
   </div>

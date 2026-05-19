@@ -1,4 +1,4 @@
-import { Component, NgZone, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Component, NgZone, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, HostListener, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -62,6 +62,10 @@ export class Chat implements OnInit, OnDestroy {
   @ViewChild('messageInput') messageInput!: ElementRef;
   @ViewChild('emojiToggleButton', { read: ElementRef }) emojiToggleButton!: ElementRef;
   @ViewChild('emojiPicker', { read: ElementRef }) emojiPicker!: ElementRef;
+  @ViewChild('video') video!: ElementRef;
+  @ViewChild('canvas') canvas!: ElementRef;
+
+  stream: any;
   message = '';
   messages: ChatMessage[] = [];
   users: any[] = [];
@@ -78,6 +82,7 @@ export class Chat implements OnInit, OnDestroy {
   editLastname = '';
 
   showEmojis = false;
+  showCamera = false;
 
   typingUsers: string[] = [];
   typingTimeout: any;
@@ -136,8 +141,6 @@ export class Chat implements OnInit, OnDestroy {
 
     this.socket.onUsers((u: any[]) => {
       this.zone.run(() => {
-        console.log('Real-time users list from backend:', u); // Isse console me users ka data dikhega
-        // Filter out current user so only other users appear in the list
         this.users = u.filter(user => user.email !== this.currentUser);
         this.cdr.detectChanges(); // Turant UI update karega
       });
@@ -240,14 +243,14 @@ export class Chat implements OnInit, OnDestroy {
     this.selectedUser = email;
     if (email === null) {
       this.selectedUserName = null;
-         this.selectedUserImage = null;
+      this.selectedUserImage = null;
       localStorage.removeItem('selectedUserEmail');
       localStorage.removeItem('selectedUserFirstname');
       localStorage.removeItem('selectedUserLastname');
       localStorage.removeItem('selectedUserProfileImage');
     } else {
       this.selectedUserName = `${firstname || ''} ${lastname || ''}`.trim() || email;
-       this.selectedUserImage = profileImage || null;
+      this.selectedUserImage = profileImage || null;
       localStorage.setItem('selectedUserEmail', email);
       localStorage.setItem('selectedUserFirstname', firstname || '');
       localStorage.setItem('selectedUserLastname', lastname || '');
@@ -402,9 +405,9 @@ export class Chat implements OnInit, OnDestroy {
     }
   }
 
-
   isMedia(text: string | undefined): boolean {
     if (!text) return false;
+    if (text.startsWith('data:image/')) return true; // Base64 Image Support
     const urlPattern = /^(http|https):\/\/[^ "]+$/;
     if (urlPattern.test(text)) {
       // Agar link .gif, .jpg hai ya Giphy/Tenor ka media link hai to true return karo
@@ -534,5 +537,61 @@ export class Chat implements OnInit, OnDestroy {
     this.authService.logout();
     localStorage.removeItem('unreadCounts'); // Logout par unread counts clear kar do
     this.router.navigate(['/']);
+  }
+
+  async openCameraModal() {
+    this.showCamera = true;
+    this.cdr.detectChanges(); // Force render to make video element available
+    await this.startCamera();
+  }
+
+  closeCameraModal() {
+    this.stopCamera();
+    this.showCamera = false;
+  }
+
+  async startCamera() {
+    // Stop any existing stream before starting a new one
+    this.stopCamera();
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "user"
+      }
+    });
+
+    this.video.nativeElement.srcObject = this.stream;
+  }
+
+  stopCamera() {
+    if (this.stream) {
+      this.stream.getTracks().forEach((t: any) => t.stop());
+    }
+  }
+
+  capturePhoto() {
+    const video = this.video.nativeElement;
+    const canvas = this.canvas.nativeElement;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    // Convert to base64 immediately and send
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+    this.closeCameraModal();
+    this.sendImageDirect(base64Image);
+  }
+
+  sendImageDirect(base64Image: string) {
+    if (base64Image && base64Image.trim() !== '') {
+      const currentMsg = this.message;
+      this.message = base64Image;
+      this.send(); // Use standard REST sending mechanism so it saves to DB
+      setTimeout(() => { this.message = currentMsg; }, 100);
+    }
   }
 }

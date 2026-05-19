@@ -9,7 +9,15 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { SnackbarComponent } from "../../shared/snackbar/snackbar";
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ErrorStateMatcher } from '@angular/material/core';
+import { FormControl, FormGroupDirective, NgForm } from '@angular/forms';
 
+export class SubmitErrorStateMatcher implements ErrorStateMatcher {
+  isSubmitted = false;
+  isErrorState(control: FormControl | null, form: FormGroupDirective | NgForm | null): boolean {
+    return !!(control && control.invalid && this.isSubmitted);
+  }
+}
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -40,28 +48,51 @@ export class Login {
   lastname = '';
   confirmpassword = '';
 
+  matcher = new SubmitErrorStateMatcher();
 
-
+  get isFormValid(): boolean {
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email);
+    if (this.isLoginMode) {
+      return !!(isEmailValid && this.password.trim());
+    }
+    return !!(isEmailValid && this.firstname.trim() && this.lastname.trim() && this.password.trim() && this.confirmpassword.trim());
+  }
 
   toggleMode() {
     this.isLoginMode = !this.isLoginMode;
-    // this.username = '';
     this.password = '';
     this.email = '';
     this.firstname = '';
     this.lastname = '';
     this.confirmpassword = '';
+    this.matcher.isSubmitted = false;
   }
 
   async submit() {
-    // if (!this.username.trim() || !this.password.trim()) return;
-    if (!this.email || !this.password.trim()) return;
+    this.matcher.isSubmitted = true;
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email);
+    if (!isEmailValid || !this.password.trim()) return;
+
+    if (this.isLoginMode) {
+      if (!isEmailValid || !this.password.trim()) return;
+    } else {
+      if (!isEmailValid || !this.firstname || !this.lastname || !this.password.trim() || !this.confirmpassword.trim()) return;
+      if (this.password.trim() !== this.confirmpassword.trim()) {
+        this.snackBar.openFromComponent(SnackbarComponent, {
+          data: { message: "Passwords do not match" },
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+          panelClass: ['error-snackbar']
+        });
+        return;
+      }
+    }
 
     this.isLoading = true;
     try {
       let res: any;
       if (this.isLoginMode) {
-        // res = await this.authService.login(this.username.trim(), this.password.trim());
         res = await this.authService.login(this.email, this.password.trim());
         if (res && res.token) localStorage.setItem('token', res.token);
         if (res && res.email) localStorage.setItem('user', res.email);
@@ -70,7 +101,6 @@ export class Login {
         if (res && res.profileImage) localStorage.setItem('profileImage', res.profileImage);
         this.router.navigate(['/chat']);
       } else {
-        // res = await this.authService.register(this.username.trim(), this.password.trim());
         res = await this.authService.register({
           email: this.email,
           firstname: this.firstname,
@@ -85,7 +115,7 @@ export class Login {
           verticalPosition: 'bottom',
           panelClass: ['success-snackbar']
         });
-        this.toggleMode(); // Successful register ke baad automatically login form open karne ke liye
+        this.toggleMode();
       }
     } catch (err: any) {
       this.isLoading = false;
