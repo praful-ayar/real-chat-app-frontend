@@ -178,14 +178,17 @@ body {
   visibility: hidden;
   transition: all 0.2s ease-in-out;
 }
-.message:hover + .message-actions,
+
+.message:hover+.message-actions,
 .message-actions:hover {
   opacity: 1;
   visibility: visible;
 }
+
 .action-btn:hover mat-icon {
   color: #1976d2;
 }
+
 .action-btn[title="Delete"]:hover mat-icon {
   color: #f44336 !important;
 }
@@ -197,10 +200,12 @@ body {
   justify-content: space-between;
   width: 100%;
 }
+
 .username-text {
   font-weight: 500;
   text-transform: capitalize;
 }
+
 .you-text {
   font-size: 0.85em;
   color: #757575;
@@ -263,6 +268,7 @@ body {
   margin-bottom: 5px;
   align-self: flex-start;
 }
+
 .typing-bubble {
   background: #ffffff;
   padding: 10px 14px;
@@ -271,6 +277,7 @@ body {
   display: flex;
   gap: 5px;
 }
+
 .typing-bubble .dot {
   width: 6px;
   height: 6px;
@@ -278,14 +285,36 @@ body {
   border-radius: 50%;
   animation: blink 1.4s infinite both;
 }
-.typing-bubble .dot:nth-child(1) { animation-delay: 0s; }
-.typing-bubble .dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-bubble .dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes blink {
-  0% { opacity: 0.2; transform: scale(0.8); }
-  20% { opacity: 1; transform: scale(1.2); }
-  100% { opacity: 0.2; transform: scale(0.8); }
+
+.typing-bubble .dot:nth-child(1) {
+  animation-delay: 0s;
 }
+
+.typing-bubble .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-bubble .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+
+  20% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+
+  100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+}
+
 .typing-text {
   font-size: 12px;
   color: #757575;
@@ -314,34 +343,39 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Reply-related styles */
 .reply-preview {
   padding: 8px;
   margin-bottom: 6px;
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
   border-left: 3px solid #1976d2;
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .reply-preview:hover {
-  background: rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.08);
 }
+
 .message-wrapper.me .reply-preview {
   border-left-color: #4caf50;
 }
+
 .reply-sender {
   font-size: 12px;
   font-weight: bold;
   color: #1976d2;
   text-transform: capitalize;
 }
+
 .message-wrapper.me .reply-sender {
   color: #4caf50;
 }
+
 .reply-text {
   font-size: 13px;
   color: #555;
@@ -356,33 +390,76 @@ body {
   padding: 8px 15px;
   background: #e9e9e9;
 }
+
 .reply-bar-content {
   display: flex;
   align-items: center;
   gap: 10px;
   overflow: hidden;
 }
-.reply-bar-icon { color: #555; }
-.reply-bar-sender { font-size: 12px; font-weight: bold; text-transform: capitalize; }
-.reply-bar-message { font-size: 13px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.reply-bar-icon {
+  color: #555;
+}
+
+.reply-bar-sender {
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.reply-bar-message {
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .message .highlight {
   animation: highlight-anim 1.5s ease-out;
 }
+
 @keyframes highlight-anim {
-  0%, 100% { background-color: initial; }
-  50% { background-color: #fff9c4; }
+
+  0%,
+  100% {
+    background-color: initial;
+  }
+
+  50% {
+    background-color: #fff9c4;
+  }
 }
+
 .message-wrapper.me .message.highlight {
   animation: highlight-anim-me 1.5s ease-out;
 }
+
 @keyframes highlight-anim-me {
-  0%, 100% { background-color: #dcf8c6; }
-  50% { background-color: #c5e1a5; }
+
+  0%,
+  100% {
+    background-color: #dcf8c6;
+  }
+
+  50% {
+    background-color: #c5e1a5;
+  }
 }
 
 .message-media {
   max-width: 200px;
   max-height: 200px;
   border-radius: 8px;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
 }

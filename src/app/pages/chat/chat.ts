@@ -10,6 +10,8 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatCardModule } from '@angular/material/card';
+import { MatSelectModule } from '@angular/material/select';
+import { MatOptionModule } from '@angular/material/core';
 
 import { SocketService } from '../../services/socket.service';
 import { AuthService } from '../../services/auth.service';
@@ -47,6 +49,8 @@ export interface ChatMessage {
     MatIconModule,
     MatMenuModule,
     MatCardModule,
+    MatSelectModule,
+    MatOptionModule,
     EmojiPickerComponent
   ],
   templateUrl: './chat.html',
@@ -79,6 +83,10 @@ export class Chat implements OnInit, OnDestroy {
   typingTimeout: any;
 
   replyingToMessage: ChatMessage | null = null;
+  autoTranslate: boolean = false;
+  isTranslating: boolean = false;
+  targetLanguage: string = 'English'; // Default language
+  availableLanguages: string[] = ['English', 'Hindi', 'Gujarati', 'Marathi', 'Bengali', 'Spanish', 'French', 'German'];
 
   constructor(
     private socket: SocketService,
@@ -103,7 +111,27 @@ export class Chat implements OnInit, OnDestroy {
       return;
     }
 
-    // Load initial public messages
+    // Restore selected user state from local storage on refresh
+    const savedSelectedUser = localStorage.getItem('selectedUserEmail');
+    if (savedSelectedUser) {
+      this.selectedUser = savedSelectedUser;
+      const sfname = localStorage.getItem('selectedUserFirstname') || '';
+      const slname = localStorage.getItem('selectedUserLastname') || '';
+      this.selectedUserName = `${sfname} ${slname}`.trim() || savedSelectedUser;
+      this.selectedUserImage = localStorage.getItem('selectedUserProfileImage') || null;
+    }
+
+    // Restore unread counts from local storage
+    const savedUnreadCounts = localStorage.getItem('unreadCounts');
+    if (savedUnreadCounts) {
+      try {
+        this.unreadCounts = JSON.parse(savedUnreadCounts);
+      } catch (e) {
+        this.unreadCounts = {}; // Reset if data is corrupt
+      }
+    }
+
+    // Load messages (will automatically load private chat if restored above)
     this.loadMessages();
 
     this.socket.onUsers((u: any[]) => {
@@ -128,6 +156,7 @@ export class Chat implements OnInit, OnDestroy {
           // Agar hum private chat me hain aur public message aaya to count badhao
           if ((msg.email || msg.username || msg.user) !== this.currentUser) {
             this.unreadCounts = { ...this.unreadCounts, 'public': (this.unreadCounts['public'] || 0) + 1 };
+            localStorage.setItem('unreadCounts', JSON.stringify(this.unreadCounts));
             this.cdr.detectChanges();
           }
         }
@@ -151,6 +180,7 @@ export class Chat implements OnInit, OnDestroy {
           if (msg.receiver === this.currentUser && msg.email !== this.currentUser) {
             const sender = msg.email!;
             this.unreadCounts = { ...this.unreadCounts, [sender]: (this.unreadCounts[sender] || 0) + 1 };
+            localStorage.setItem('unreadCounts', JSON.stringify(this.unreadCounts));
             this.cdr.detectChanges();
           }
         }
@@ -211,9 +241,21 @@ export class Chat implements OnInit, OnDestroy {
     if (email === null) {
       this.selectedUserName = null;
          this.selectedUserImage = null;
+      localStorage.removeItem('selectedUserEmail');
+      localStorage.removeItem('selectedUserFirstname');
+      localStorage.removeItem('selectedUserLastname');
+      localStorage.removeItem('selectedUserProfileImage');
     } else {
       this.selectedUserName = `${firstname || ''} ${lastname || ''}`.trim() || email;
        this.selectedUserImage = profileImage || null;
+      localStorage.setItem('selectedUserEmail', email);
+      localStorage.setItem('selectedUserFirstname', firstname || '');
+      localStorage.setItem('selectedUserLastname', lastname || '');
+      if (profileImage) {
+        localStorage.setItem('selectedUserProfileImage', profileImage);
+      } else {
+        localStorage.removeItem('selectedUserProfileImage');
+      }
     }
 
     // Chat select karte hi notification badge hata do
@@ -222,6 +264,7 @@ export class Chat implements OnInit, OnDestroy {
     } else {
       this.unreadCounts = { ...this.unreadCounts, [email]: 0 };
     }
+    localStorage.setItem('unreadCounts', JSON.stringify(this.unreadCounts));
     this.typingUsers = []; // Chat switch karne par pichli typing status clear kar do
     this.loadMessages();
   }
@@ -397,11 +440,34 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   async send() {
-    if (!this.message.trim() || !this.currentUser) return;
+    if (!this.message.trim() || !this.currentUser || this.isTranslating) return;
+
+    let textToSend = this.message.trim();
+    this.message = ''; // Clear input immediately for better UX
+    this.showEmojis = false; // Send karne ke baad emoji picker hide kar do
+
+    if (this.autoTranslate && !this.isMedia(textToSend) && !this.isOnlyEmoji(textToSend)) {
+      this.isTranslating = true;
+      try {
+        const transRes = await fetch(`${environment.apiUrl}/translate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: textToSend, targetLanguage: this.targetLanguage })
+        });
+        if (transRes.ok) {
+          const transData = await transRes.json();
+          if (transData.translatedText) textToSend = transData.translatedText;
+        }
+      } catch (err) {
+        console.error("Translation error", err);
+      } finally {
+        this.isTranslating = false;
+      }
+    }
 
     const payload: any = {
       email: this.currentUser,
-      text: this.message.trim(),
+      text: textToSend,
       receiver: this.selectedUser
     };
 
@@ -411,10 +477,6 @@ export class Chat implements OnInit, OnDestroy {
       payload.replyToText = this.replyingToMessage.text || this.replyingToMessage.message;
       payload.replyToSender = this.replyingToMessage.firstname || (this.replyingToMessage.email || this.replyingToMessage.user)?.split('@')[0];
     }
-
-    const msgText = this.message.trim();
-    this.message = ''; // Clear input immediately for better UX
-    this.showEmojis = false; // Send karne ke baad emoji picker hide kar do
 
     // Jaise hi message send ho, typing status stop kar do
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
@@ -470,6 +532,7 @@ export class Chat implements OnInit, OnDestroy {
 
   logout() {
     this.authService.logout();
+    localStorage.removeItem('unreadCounts'); // Logout par unread counts clear kar do
     this.router.navigate(['/']);
   }
 }

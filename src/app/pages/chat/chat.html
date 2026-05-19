@@ -6,7 +6,7 @@
         <div class="sidebar-header">
           <h3>Online Users</h3>
         </div>
-        <mat-list>
+        <mat-list style="padding-top: 0;">
           <!-- Public Chat Option -->
           <mat-list-item (click)="selectUser(null)" [style.background]="selectedUser === null ? '#e0f7fa' : ''"
             style="cursor: pointer;" class="compact-list-item">
@@ -17,14 +17,14 @@
             </div>
           </mat-list-item>
 
-          <mat-divider style="margin: 10px 0;"></mat-divider>
+          <mat-divider></mat-divider>
 
           <!-- Online Users List -->
           <mat-list-item *ngFor="let u of users" (click)="selectUser(u.email, u.firstname, u.lastname, u.profileImage)"
             [style.background]="selectedUser === u.email ? '#e0f7fa' : ''" style="cursor: pointer;"
             class="compact-list-item">
             <img *ngIf="u.profileImage" [src]="u.profileImage" matListItemIcon
-              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin:16px 10px 10px;">
             <mat-icon *ngIf="!u.profileImage" matListItemIcon color="primary">person</mat-icon>
             <div matListItemTitle class="list-item-content">
               <span class="username-text">{{u.firstname}} {{u.lastname}}</span>
@@ -97,7 +97,7 @@
         <!-- Global Chat -->
         <ng-template #globalChat>
           <mat-icon color="primary">group</mat-icon>
-          Global Public Chat
+          Public Chat
         </ng-template>
 
       </div>
@@ -114,7 +114,8 @@
               <div class="reply-sender">{{ m.replyToSender }}</div>
               <div class="reply-text">
                 <ng-container *ngIf="isMedia(m.replyToText); else textReply">
-                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
+                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                      style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
                 </ng-container>
                 <ng-template #textReply>
                   {{ m.replyToText | slice:0:100 }}{{ (m.replyToText && m.replyToText.length > 100) ? '...' : '' }}
@@ -126,27 +127,29 @@
               <div class="msg-content">
                 <!-- Image/GIF Check: Agar Media hai to image tag render hoga, nahi to plain text -->
                 <ng-container *ngIf="isMedia(m.text || m.message); else textMsg">
-                  <img [src]="m.text || m.message" class="message-media"
-                    alt="GIF/Image" />
+                  <img [src]="m.text || m.message" class="message-media" alt="GIF/Image" />
                 </ng-container>
                 <ng-template #textMsg>{{m.text || m.message}}</ng-template>
               </div>
             </div>
           </div>
           <div class="message-actions">
-            <button mat-icon-button class="action-btn" (click)="startReply(m)" title="Reply"><mat-icon>reply</mat-icon></button>
-            <button mat-icon-button class="action-btn" *ngIf="m._id" (click)="deleteMessage(m._id)" title="Delete"><mat-icon>delete</mat-icon></button>
+            <button mat-icon-button class="action-btn" (click)="startReply(m)"
+              title="Reply"><mat-icon>reply</mat-icon></button>
+            <button mat-icon-button class="action-btn" *ngIf="m._id" (click)="deleteMessage(m._id)"
+              title="Delete"><mat-icon>delete</mat-icon></button>
           </div>
         </div>
-        
+
         <!-- Typing Indicator -->
         <div class="typing-indicator" *ngIf="typingUsers.length > 0">
-           <div class="typing-bubble">
-             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-           </div>
-           <span class="typing-text">{{ typingUsers.join(', ') }} {{ typingUsers.length > 1 ? 'are' : 'is' }} typing...</span>
+          <div class="typing-bubble">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <span class="typing-text">{{ typingUsers.join(', ') }} {{ typingUsers.length > 1 ? 'are' : 'is' }}
+            typing...</span>
         </div>
-        
+
       </div>
 
       <!-- INPUT -->
@@ -159,10 +162,12 @@
               <div class="reply-bar-sender">Replying to {{ getReplySenderName(replyingToMessage) }}</div>
               <div class="reply-bar-message">
                 <ng-container *ngIf="isMedia(replyingToMessage.text || replyingToMessage.message); else textReplyBar">
-                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
+                  <span style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                      style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> GIF</span>
                 </ng-container>
                 <ng-template #textReplyBar>
-                  {{ (replyingToMessage.text || replyingToMessage.message) | slice:0:100 }}{{ ((replyingToMessage.text || replyingToMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
+                  {{ (replyingToMessage.text || replyingToMessage.message) | slice:0:100 }}{{ ((replyingToMessage.text
+                  || replyingToMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
                 </ng-template>
               </div>
             </div>
@@ -174,20 +179,43 @@
 
         <div class="input-area" style="position: relative;">
 
-        <!-- Extracted Emoji & GIF Picker Component -->
-        <app-emoji-picker *ngIf="showEmojis" #emojiPicker (emojiSelected)="addEmoji($event)" (gifSelected)="sendGifDirect($event)">
-        </app-emoji-picker>
+          <!-- Extracted Emoji & GIF Picker Component -->
+          <app-emoji-picker *ngIf="showEmojis" #emojiPicker (emojiSelected)="addEmoji($event)"
+            (gifSelected)="sendGifDirect($event)">
+          </app-emoji-picker>
 
-        <button mat-icon-button color="primary" #emojiToggleButton (click)="toggleEmojis()" title="Emoji & GIF Picker">
-          <mat-icon>sentiment_satisfied_alt</mat-icon>
-        </button>
+          <button mat-icon-button color="primary" #emojiToggleButton (click)="toggleEmojis()"
+            title="Emoji & GIF Picker">
+            <mat-icon>sentiment_satisfied_alt</mat-icon>
+          </button>
 
-        <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic">
-          <input #messageInput matInput [(ngModel)]="message" placeholder="Type your message..." (input)="onTyping()" (keyup.enter)="send()">
-        </mat-form-field>
-        <button mat-fab color="primary" (click)="send()" [disabled]="!message.trim()">
-          <mat-icon>send</mat-icon>
-        </button>
+          <button mat-icon-button [color]="autoTranslate ? 'accent' : 'primary'"
+            (click)="autoTranslate = !autoTranslate" title="Toggle Auto Translate">
+            <mat-icon>translate</mat-icon>
+          </button>
+
+          <!-- Language Selector Menu (Looks like a small chip and opens upwards) -->
+          <button *ngIf="autoTranslate" mat-button [matMenuTriggerFor]="languageMenu"
+            style="border-radius: 20px; padding: 0; min-width: 100px; background: #e0e0e0; color: #333; margin-right: 8px; height: 36px;">
+            {{ targetLanguage }} <mat-icon style="margin-right: 8px;">arrow_drop_up</mat-icon>
+          </button>
+
+          <mat-menu #languageMenu="matMenu" yPosition="above">
+            <button mat-menu-item *ngFor="let lang of availableLanguages" (click)="targetLanguage = lang">
+              <mat-icon color="accent" *ngIf="targetLanguage === lang">check</mat-icon>
+              <span [style.margin-left.px]="targetLanguage === lang ? 0 : 40">{{ lang }}</span>
+            </button>
+          </mat-menu>
+
+          <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic">
+            <input #messageInput matInput [(ngModel)]="message"
+              [placeholder]="isTranslating ? 'Translating to ' + targetLanguage + '...' : 'Type your message...'"
+              (input)="onTyping()" (keyup.enter)="send()" [disabled]="isTranslating">
+          </mat-form-field>
+          <button mat-fab color="primary" (click)="send()" [disabled]="!message.trim() && !isTranslating">
+            <mat-icon *ngIf="!isTranslating">send</mat-icon>
+            <mat-icon *ngIf="isTranslating" class="spin-animation">autorenew</mat-icon>
+          </button>
         </div>
       </div>
     </div>
