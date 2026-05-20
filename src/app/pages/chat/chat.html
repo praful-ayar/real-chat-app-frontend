@@ -96,17 +96,17 @@
           </ng-template>
         </div>
 
-        <!-- Search Bar -->
-        <div style="display: flex; align-items: center; background: white; border-radius: 20px; padding: 4px 12px; border: 1px solid #ddd;">
-          <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: #888;">search</mat-icon>
-          <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()" placeholder="Search messages..." 
-                 style="border: none; outline: none; padding: 4px 8px; font-size: 14px; width: 160px; background: transparent;">
-          <mat-icon *ngIf="searchQuery" (click)="searchQuery = ''; loadMessages()" 
-                    style="font-size: 16px; width: 16px; height: 16px; color: #888; cursor: pointer;" title="Clear">
-            close
-          </mat-icon>
+          <!-- Search Bar -->
+          <div style="display: flex; align-items: center; background: white; border-radius: 20px; padding: 4px 12px; border: 1px solid #ddd;">
+            <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: #888;">search</mat-icon>
+            <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()" placeholder="Search messages..." 
+                   style="border: none; outline: none; padding: 4px 8px; font-size: 14px; width: 160px; background: transparent;">
+            <mat-icon *ngIf="searchQuery" (click)="searchQuery = ''; loadMessages()" 
+                      style="font-size: 16px; width: 16px; height: 16px; color: #888; cursor: pointer;" title="Clear">
+              close
+            </mat-icon>
+          </div>
         </div>
-      </div>
 
       <div class="messages" #scrollMe>
         <div *ngFor="let m of messages" class="message-wrapper" [id]="'msg-' + m._id"

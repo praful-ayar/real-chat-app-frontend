@@ -19,16 +19,16 @@ import { environment } from '../../environments/environment';
 import { EmojiPickerComponent } from '../../shared/emoji-picker/emoji-picker';
 
 export interface ChatMessage {
-  _id?: string;        // Added for message deletion support
-  user?: string;       // Compatibility with socket
-  username?: string;   // New API payload support
+  _id?: string;      
+  user?: string;  
+  username?: string;
   email?: string;
-  firstname?: string; // New API payload support
-  lastname?: string; // New API payload support
-  profileImage?: string; // New avatar
-  message?: string;    // Compatibility with socket
-  text?: string;       // New API payload support
-  receiver?: string;   // Private message receiver
+  firstname?: string;
+  lastname?: string;
+  profileImage?: string;
+  message?: string;
+  text?: string;
+  receiver?: string;
   timestamp?: Date | string | number;
   createdAt?: Date | string | number;
   // Reply functionality fields
@@ -75,7 +75,7 @@ export class Chat implements OnInit, OnDestroy {
   users: any[] = [];
   currentUser: string | null = null;
   currentUserName: string | null = null;
-  selectedUser: string | null = null; // null = public chat, string = private chat
+  selectedUser: string | null = null;
   selectedUserName: string | null = null;
   selectedUserImage: string | null = null;
   unreadCounts: { [key: string]: number } = {};
@@ -84,21 +84,17 @@ export class Chat implements OnInit, OnDestroy {
   showProfileSettings = false;
   editFirstname = '';
   editLastname = '';
-
   showEmojis = false;
   showCamera = false;
-
   typingUsers: string[] = [];
   typingTimeout: any;
-
   replyingToMessage: ChatMessage | null = null;
   editingMessage: ChatMessage | null = null;
   autoTranslate: boolean = false;
   isTranslating: boolean = false;
-
   searchQuery: string = '';
   searchTimeout: any;
-  targetLanguage: string = 'English'; // Default language
+  targetLanguage: string = 'English';
   availableLanguages: string[] = ['English', 'Hindi', 'Gujarati', 'Marathi', 'Bengali', 'Spanish', 'French', 'German'];
 
   constructor(
@@ -110,6 +106,7 @@ export class Chat implements OnInit, OnDestroy {
   ) { }
 
   async ngOnInit() {
+    this.requestNotificationPermission();
     this.currentUser = localStorage.getItem('user');
     const fname = localStorage.getItem('firstname') || '';
     const lname = localStorage.getItem('lastname') || '';
@@ -150,7 +147,7 @@ export class Chat implements OnInit, OnDestroy {
     this.socket.onUsers((u: any[]) => {
       this.zone.run(() => {
         this.users = u.filter(user => user.email !== this.currentUser);
-        this.cdr.detectChanges(); // Turant UI update karega
+        this.cdr.detectChanges();
       });
     });
 
@@ -164,7 +161,6 @@ export class Chat implements OnInit, OnDestroy {
             this.scrollToBottom();
           }
         } else {
-          // Agar hum private chat me hain aur public message aaya to count badhao
           if ((msg.email || msg.username || msg.user) !== this.currentUser) {
             this.unreadCounts = { ...this.unreadCounts, 'public': (this.unreadCounts['public'] || 0) + 1 };
             localStorage.setItem('unreadCounts', JSON.stringify(this.unreadCounts));
@@ -195,7 +191,6 @@ export class Chat implements OnInit, OnDestroy {
           (msg.email === this.currentUser && msg.receiver === this.selectedUser)
         ) {
           if (!this.messages.some(m => m._id === msg._id)) {
-            // Agar received message hai, instantly mark as seen
             if (msg.email !== this.currentUser && msg._id) {
               this.socket.socket.emit("updateMessageStatus", {
                 messageIds: [msg._id],
@@ -209,7 +204,6 @@ export class Chat implements OnInit, OnDestroy {
             this.scrollToBottom();
           }
         } else {
-          // Agar kisi aur user ka private message aaya to uska unread count badhao
           if (msg.receiver === this.currentUser && msg.email !== this.currentUser) {
             if (msg._id) {
               this.socket.socket.emit("updateMessageStatus", {
@@ -493,7 +487,6 @@ export class Chat implements OnInit, OnDestroy {
       const currentMsg = this.message;
       this.message = gifUrl.trim();
       this.send();
-      // Agar user kuch type kar raha tha, to uska text wapas restore kar do
       setTimeout(() => { this.message = currentMsg; }, 100);
     }
   }
@@ -647,7 +640,7 @@ export class Chat implements OnInit, OnDestroy {
 
   logout() {
     this.authService.logout();
-    localStorage.removeItem('unreadCounts'); // Logout par unread counts clear kar do
+    localStorage.removeItem('unreadCounts');
     this.router.navigate(['/']);
   }
 
@@ -733,6 +726,51 @@ export class Chat implements OnInit, OnDestroy {
       this.message = base64Image;
       this.send(); // Use standard REST sending mechanism so it saves to DB
       setTimeout(() => { this.message = currentMsg; }, 100);
+    }
+  }
+
+  requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+
+  notifyUser(msg: ChatMessage) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if ((msg.email || msg.username || msg.user) === this.currentUser) return;
+
+    const isPublicMessage = !msg.receiver;
+    const isViewingPublic = this.selectedUser === null;
+    const isViewingSender = this.selectedUser === msg.email;
+
+    const shouldNotify = document.hidden || (isPublicMessage ? !isViewingPublic : !isViewingSender);
+
+    if (shouldNotify) {
+      let bodyText = msg.text || msg.message || '';
+      const mediaType = this.getMediaType(bodyText);
+      if (mediaType !== 'text') {
+        bodyText = `📎 Sent ${mediaType === 'image' ? 'an image' : 'a ' + mediaType}`;
+      }
+
+      const senderName = msg.firstname || (msg.email || msg.user || 'Someone').split('@')[0];
+      const title = isPublicMessage ? `Public Chat: ${senderName}` : `Message from ${senderName}`;
+      
+      const notification = new Notification(title, {
+        body: bodyText,
+        icon: msg.profileImage || undefined
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        this.zone.run(() => {
+          if (isPublicMessage) {
+            this.selectUser(null);
+          } else if (msg.email) {
+            this.selectUser(msg.email, msg.firstname, msg.lastname, msg.profileImage);
+          }
+        });
+        notification.close();
+      };
     }
   }
 }
