@@ -1,4 +1,4 @@
-import { Component, NgZone, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, HostListener, viewChild } from '@angular/core';
+import { Component, NgZone, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -476,8 +476,7 @@ export class Chat implements OnInit, OnDestroy {
   async reactToMessage(msgId: string | undefined, emoji: string) {
     if (!msgId || !this.currentUser) return;
     this.showReactionPopup = null;
-    this.cdr.detectChanges(); // Turant popup close karne ke liye
-
+    this.cdr.detectChanges();
     try {
       const response = await fetch(`${environment.apiUrl}/messages/${msgId}/react`, {
         method: 'POST',
@@ -491,7 +490,7 @@ export class Chat implements OnInit, OnDestroy {
           const msg = this.messages.find(m => m._id === msgId);
           if (msg) {
             msg.reactions = reactionData.reactions;
-            this.cdr.detectChanges(); // Turant UI update karne ke liye
+            this.cdr.detectChanges();
           }
         });
       }
@@ -696,7 +695,6 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   scrollToBottom(): void {
-    // Timeout ensures DOM is fully updated before scrolling down
     setTimeout(() => {
       try {
         this.myScrollContainer.nativeElement.scrollTop = this.myScrollContainer.nativeElement.scrollHeight;
@@ -749,7 +747,7 @@ export class Chat implements OnInit, OnDestroy {
     if (base64Data && base64Data.trim() !== '') {
       const currentMsg = this.message;
       this.message = base64Data;
-      this.send(); // Use standard REST sending mechanism so it saves to DB
+      this.send();
       setTimeout(() => { this.message = currentMsg; }, 100);
     }
   }
@@ -787,14 +785,10 @@ export class Chat implements OnInit, OnDestroy {
   capturePhoto() {
     const video = this.video.nativeElement;
     const canvas = this.canvas.nativeElement;
-
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0);
-
-    // Convert to base64 immediately and send
     const base64Image = canvas.toDataURL('image/jpeg', 0.8);
     this.closeCameraModal();
     this.sendImageDirect(base64Image);
@@ -804,7 +798,7 @@ export class Chat implements OnInit, OnDestroy {
     if (base64Image && base64Image.trim() !== '') {
       const currentMsg = this.message;
       this.message = base64Image;
-      this.send(); // Use standard REST sending mechanism so it saves to DB
+      this.send();
       setTimeout(() => { this.message = currentMsg; }, 100);
     }
   }
@@ -853,9 +847,6 @@ export class Chat implements OnInit, OnDestroy {
       };
     }
   }
-
-  // chat.ts mein naya function
-
   async addNewContact() {
     if (!this.newContactEmail.trim()) return;
     try {
@@ -870,7 +861,7 @@ export class Chat implements OnInit, OnDestroy {
 
       if (response.ok) {
         console.log('Request Sent');
-        this.newContactEmail = ''; // input clear karein
+        this.newContactEmail = '';
       } else {
         console.error('Failed to add contact');
       }
@@ -879,10 +870,9 @@ export class Chat implements OnInit, OnDestroy {
     }
   }
 
-  // Search contacts function jab user type karega
   onSearchContact() {
     if (this.contactSearchTimeout) clearTimeout(this.contactSearchTimeout);
-    
+
     this.contactSearchTimeout = setTimeout(async () => {
       if (!this.newContactEmail.trim()) {
         this.searchResults = [];
@@ -904,13 +894,12 @@ export class Chat implements OnInit, OnDestroy {
       } catch (err) {
         console.error("Failed to search contacts", err);
       }
-    }, 300); // 300ms debounce
+    }, 300);
   }
 
-  // Dropdown list me se koi select karne par execute hoga
   onContactSelected(event: any) {
     this.newContactEmail = event.option.value;
-    this.addNewContact(); // Turant add kar dega
+    this.addNewContact();
   }
 
   async fetchMyContacts() {
@@ -958,8 +947,11 @@ export class Chat implements OnInit, OnDestroy {
         body: JSON.stringify({ requestId })
       });
       if (response.ok) {
-        this.pendingRequests = this.pendingRequests.filter(r => r._id !== requestId);
-        this.fetchMyContacts();
+        this.zone.run(() => {
+          this.pendingRequests = this.pendingRequests.filter(r => r._id !== requestId);
+          this.cdr.detectChanges();
+        });
+        this.fetchMyContacts(); // This updates the main contact list
       }
     } catch (error) { console.error('Accept request failed', error); }
   }
@@ -972,7 +964,10 @@ export class Chat implements OnInit, OnDestroy {
         body: JSON.stringify({ requestId })
       });
       if (response.ok) {
-        this.pendingRequests = this.pendingRequests.filter(r => r._id !== requestId);
+        this.zone.run(() => {
+          this.pendingRequests = this.pendingRequests.filter(r => r._id !== requestId);
+          this.cdr.detectChanges();
+        });
       }
     } catch (error) { console.error('Reject request failed', error); }
   }
