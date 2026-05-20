@@ -12,6 +12,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import { SocketService } from '../../services/socket.service';
 import { AuthService } from '../../services/auth.service';
@@ -19,8 +20,8 @@ import { environment } from '../../environments/environment';
 import { EmojiPickerComponent } from '../../shared/emoji-picker/emoji-picker';
 
 export interface ChatMessage {
-  _id?: string;      
-  user?: string;  
+  _id?: string;
+  user?: string;
   username?: string;
   email?: string;
   firstname?: string;
@@ -37,6 +38,7 @@ export interface ChatMessage {
   replyToSender?: string;
   isEdited?: boolean;
   status?: 'sent' | 'delivered' | 'seen';
+  reactions?: { emoji: string, email: string }[];
 }
 
 @Component({
@@ -54,6 +56,7 @@ export interface ChatMessage {
     MatCardModule,
     MatSelectModule,
     MatOptionModule,
+    MatAutocompleteModule,
     EmojiPickerComponent
   ],
   templateUrl: './chat.html',
@@ -72,7 +75,7 @@ export class Chat implements OnInit, OnDestroy {
   stream: any;
   message = '';
   messages: ChatMessage[] = [];
-  users: any[] = [];
+  onlineUsers: string[] = [];
   currentUser: string | null = null;
   currentUserName: string | null = null;
   selectedUser: string | null = null;
@@ -96,6 +99,13 @@ export class Chat implements OnInit, OnDestroy {
   searchTimeout: any;
   targetLanguage: string = 'English';
   availableLanguages: string[] = ['English', 'Hindi', 'Gujarati', 'Marathi', 'Bengali', 'Spanish', 'French', 'German'];
+
+  newContactEmail: string = '';
+  myContacts: any[] = [];
+  searchResults: any[] = [];
+  contactSearchTimeout: any;
+  pendingRequests: any[] = [];
+  showReactionPopup: string | null = null;
 
   constructor(
     private socket: SocketService,
@@ -141,12 +151,16 @@ export class Chat implements OnInit, OnDestroy {
       }
     }
 
+    // Load contacts first
+    await this.fetchMyContacts();
+    await this.fetchRequests();
+
     // Load messages (will automatically load private chat if restored above)
     this.loadMessages();
 
     this.socket.onUsers((u: any[]) => {
       this.zone.run(() => {
-        this.users = u.filter(user => user.email !== this.currentUser);
+        this.onlineUsers = u.map(user => user.email);
         this.cdr.detectChanges();
       });
     });
@@ -258,6 +272,32 @@ export class Chat implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       });
     });
+
+    this.socket.socket.on('contactRequestReceived', () => {
+      this.zone.run(() => {
+        this.fetchRequests(); // Refresh list to get populated user details
+      });
+    });
+
+    this.socket.socket.on('contactRequestAccepted', () => {
+      this.zone.run(() => {
+        this.fetchMyContacts();
+      });
+    });
+
+    this.socket.socket.on('messageReaction', (data: { id: string, reactions: any[] }) => {
+      this.zone.run(() => {
+        const msg = this.messages.find(m => m._id === data.id);
+        if (msg) {
+          msg.reactions = data.reactions;
+          this.cdr.detectChanges();
+        }
+      });
+    });
+  }
+
+  isUserOnline(email: string): boolean {
+    return this.onlineUsers.includes(email);
   }
 
   async loadMessages() {
@@ -284,7 +324,7 @@ export class Chat implements OnInit, OnDestroy {
             const unseenIds = this.messages
               .filter(m => m.receiver === this.currentUser && m.email === this.selectedUser && m.status !== 'seen')
               .map(m => m._id!);
-            
+
             if (unseenIds.length > 0) {
               this.socket.socket.emit('updateMessageStatus', {
                 messageIds: unseenIds,
@@ -361,7 +401,7 @@ export class Chat implements OnInit, OnDestroy {
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.zone.run(() => {
-          this.profileImage = e.target.result; 
+          this.profileImage = e.target.result;
           this.cdr.detectChanges();
         });
       };
@@ -409,6 +449,12 @@ export class Chat implements OnInit, OnDestroy {
           this.showEmojis = false;
         });
       }
+
+      // Close reaction popup if clicked outside
+      const target = event.target as HTMLElement;
+      if (!target.closest('.reaction-btn-trigger') && !target.closest('.reaction-popup')) {
+        this.showReactionPopup = null;
+      }
     }
   }
 
@@ -419,6 +465,37 @@ export class Chat implements OnInit, OnDestroy {
   addEmoji(emoji: string) {
     this.message += emoji;
     this.messageInput.nativeElement.focus();
+  }
+
+  toggleReactionPopup(msgId: string | undefined, event: MouseEvent) {
+    if (!msgId) return;
+    event.stopPropagation();
+    this.showReactionPopup = this.showReactionPopup === msgId ? null : msgId;
+  }
+
+  async reactToMessage(msgId: string | undefined, emoji: string) {
+    if (!msgId || !this.currentUser) return;
+    this.showReactionPopup = null;
+    this.cdr.detectChanges(); // Turant popup close karne ke liye
+
+    try {
+      const response = await fetch(`${environment.apiUrl}/messages/${msgId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ emoji, email: this.currentUser })
+      });
+
+      if (response.ok) {
+        const reactionData = await response.json();
+        this.zone.run(() => {
+          const msg = this.messages.find(m => m._id === msgId);
+          if (msg) {
+            msg.reactions = reactionData.reactions;
+            this.cdr.detectChanges(); // Turant UI update karne ke liye
+          }
+        });
+      }
+    } catch (err) { console.error('Reaction failed', err); }
   }
 
   startReply(message: ChatMessage) {
@@ -497,7 +574,7 @@ export class Chat implements OnInit, OnDestroy {
     if (text.startsWith('data:video/')) return 'video';
     if (text.startsWith('data:audio/')) return 'audio';
     if (text.startsWith('data:application/') || text.startsWith('data:text/')) return 'file';
-    
+
     const urlPattern = /^(http|https):\/\/[^ "]+$/;
     if (urlPattern.test(text)) {
       if (text.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null || text.includes('media.giphy.com') || text.includes('media.tenor.com')) return 'image';
@@ -538,8 +615,8 @@ export class Chat implements OnInit, OnDestroy {
     if (!this.message.trim() || !this.currentUser || this.isTranslating) return;
 
     let textToSend = this.message.trim();
-    this.message = ''; 
-    this.showEmojis = false; 
+    this.message = '';
+    this.showEmojis = false;
 
     if (this.autoTranslate && this.getMediaType(textToSend) === 'text' && !this.isOnlyEmoji(textToSend)) {
       this.isTranslating = true;
@@ -636,6 +713,9 @@ export class Chat implements OnInit, OnDestroy {
     this.socket.socket.off('stopTyping');
     this.socket.socket.off('messageEdited');
     this.socket.socket.off('messageStatusUpdated');
+    this.socket.socket.off('contactRequestReceived');
+    this.socket.socket.off('contactRequestAccepted');
+    this.socket.socket.off('messageReaction');
   }
 
   logout() {
@@ -648,8 +728,8 @@ export class Chat implements OnInit, OnDestroy {
     const file = event.target.files[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
-         alert("File size exceeds 10MB limit.");
-         return;
+        alert("File size exceeds 10MB limit.");
+        return;
       }
       const reader = new FileReader();
       reader.onload = (e: any) => {
@@ -661,7 +741,7 @@ export class Chat implements OnInit, OnDestroy {
       reader.readAsDataURL(file);
     }
     if (this.mediaInput) {
-       this.mediaInput.nativeElement.value = '';
+      this.mediaInput.nativeElement.value = '';
     }
   }
 
@@ -754,7 +834,7 @@ export class Chat implements OnInit, OnDestroy {
 
       const senderName = msg.firstname || (msg.email || msg.user || 'Someone').split('@')[0];
       const title = isPublicMessage ? `Public Chat: ${senderName}` : `Message from ${senderName}`;
-      
+
       const notification = new Notification(title, {
         body: bodyText,
         icon: msg.profileImage || undefined
@@ -772,5 +852,128 @@ export class Chat implements OnInit, OnDestroy {
         notification.close();
       };
     }
+  }
+
+  // chat.ts mein naya function
+
+  async addNewContact() {
+    if (!this.newContactEmail.trim()) return;
+    try {
+      const response = await fetch(`${environment.apiUrl}/contacts/request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ email: this.newContactEmail.trim() })
+      });
+
+      if (response.ok) {
+        console.log('Request Sent');
+        this.newContactEmail = ''; // input clear karein
+      } else {
+        console.error('Failed to add contact');
+      }
+    } catch (error) {
+      console.error('Add contact failed', error);
+    }
+  }
+
+  // Search contacts function jab user type karega
+  onSearchContact() {
+    if (this.contactSearchTimeout) clearTimeout(this.contactSearchTimeout);
+    
+    this.contactSearchTimeout = setTimeout(async () => {
+      if (!this.newContactEmail.trim()) {
+        this.searchResults = [];
+        return;
+      }
+      try {
+        const response = await fetch(`${environment.apiUrl}/contacts/search?q=${encodeURIComponent(this.newContactEmail.trim())}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          this.zone.run(() => {
+            this.searchResults = data;
+            this.cdr.detectChanges();
+          });
+        }
+      } catch (err) {
+        console.error("Failed to search contacts", err);
+      }
+    }, 300); // 300ms debounce
+  }
+
+  // Dropdown list me se koi select karne par execute hoga
+  onContactSelected(event: any) {
+    this.newContactEmail = event.option.value;
+    this.addNewContact(); // Turant add kar dega
+  }
+
+  async fetchMyContacts() {
+    try {
+      const response = await fetch(`${environment.apiUrl}/contacts`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.zone.run(() => {
+          this.myContacts = data;
+          this.cdr.detectChanges();
+        });
+      }
+    } catch (error) {
+      console.error('Fetch contacts failed', error);
+    }
+  }
+
+  async fetchRequests() {
+    try {
+      const response = await fetch(`${environment.apiUrl}/contacts/requests`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        this.zone.run(() => {
+          this.pendingRequests = data;
+          this.cdr.detectChanges();
+        });
+      }
+    } catch (error) { console.error('Fetch requests failed', error); }
+  }
+
+  async acceptRequest(requestId: string) {
+    try {
+      const response = await fetch(`${environment.apiUrl}/contacts/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ requestId })
+      });
+      if (response.ok) {
+        this.pendingRequests = this.pendingRequests.filter(r => r._id !== requestId);
+        this.fetchMyContacts();
+      }
+    } catch (error) { console.error('Accept request failed', error); }
+  }
+
+  async rejectRequest(requestId: string) {
+    try {
+      const response = await fetch(`${environment.apiUrl}/contacts/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ requestId })
+      });
+      if (response.ok) {
+        this.pendingRequests = this.pendingRequests.filter(r => r._id !== requestId);
+      }
+    } catch (error) { console.error('Reject request failed', error); }
   }
 }

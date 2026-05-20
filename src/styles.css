@@ -30,3 +30,7 @@ body {
 .success-snackbar .mdc-snackbar__surface {
   background-color: #4caf50 !important; /* Fallback override for background */
 }
+
+.no-padding-menu .mat-mdc-menu-content {
+  padding: 0 !important;
+}

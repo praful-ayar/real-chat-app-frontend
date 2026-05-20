@@ -179,6 +179,7 @@ body {
   gap: 4px;
   opacity: 0;
   visibility: hidden;
+  position: relative;
   transition: all 0.2s ease-in-out;
 }
 
@@ -196,6 +197,7 @@ body {
   justify-content: center;
   align-items: center;
 }
+
 .action-btn mat-icon {
   font-size: 20px;
   width: 20px;
@@ -216,6 +218,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  align-items: center;
   width: 100%;
 }
 
@@ -453,22 +456,25 @@ body {
   background: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
 }
+
 .file-attachment a {
   color: #1976d2;
   font-weight: 500;
 }
+
 .message-wrapper.me .file-attachment a {
   color: #2e7d32;
 }
 
 .msg-status {
   display: flex;
-  justify-content: flex-end;
+  justify-content: end;
   align-items: center;
   font-size: 11px;
   color: rgba(0, 0, 0, 0.45);
   margin-top: 4px;
   line-height: 1;
+  width: 100%;
 }
 
 .message-wrapper.me .msg-status {
@@ -488,7 +494,8 @@ body {
 }
 
 .status-icon.seen {
-  color: #34b7f1; /* WhatsApp Style Blue Tick */
+  color: #34b7f1;
+  /* WhatsApp Style Blue Tick */
 }
 
 .message .highlight {
@@ -570,4 +577,59 @@ body {
   background: #f5f5f5;
   color: #757575;
   font-style: italic;
+}
+
+.mat-mdc-menu-content {
+  padding: 0 !important;
+}
+
+.mat-mdc-menu-item {
+  padding: 0 10px !important;
+  min-height: 20px;
+  margin-bottom: 10px;
+}
+
+.mat-mdc-menu-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Override Angular Material list item internal spacing */
+::ng-deep .mdc-list-item--with-leading-icon.mdc-list-item--with-two-lines .mdc-list-item__primary-text::before {
+  height: 25px !important;
+}
+
+/* Reaction Styles */
+.reaction-popup {
+  position: absolute;
+  bottom: -40px;
+  left: 0;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px;
+  z-index: 100;
+}
+
+.reaction-popup span {
+  cursor: pointer;
+  font-size: 20px;
+  transition: transform 0.2s;
+}
+
+.reaction-popup span:hover {
+  transform: scale(1.2);
+}
+
+.reactions-display {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 2px 6px;
+  display: inline-flex;
+  gap: 2px;
+  font-size: 13px;
+  margin-top: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
