@@ -55,6 +55,36 @@
         <div class="sidebar-header">
           <h3>My Contacts</h3>
         </div>
+
+        <!-- STORIES / STATUS SECTION -->
+        <div class="status-list-container">
+          <!-- Add My Status -->
+          <div class="status-item add-status">
+            <div class="my-status-add">
+              <div class="status-ring" [ngClass]="myStatus ? (allStatusesViewed(myStatus) ? 'viewed' : 'unviewed') : ''"
+                (click)="myStatus ? viewStatuses(myStatus) : statusInput.click()">
+                <img [src]="profileImage || ''"
+                  style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
+              </div>
+              <mat-icon class="add-icon" (click)="statusInput.click(); $event.stopPropagation()">add</mat-icon>
+            </div>
+            <span style="font-size: 12px; font-weight: 500; margin-top: 4px;">My Status</span>
+            <input type="file" #statusInput (change)="onStatusSelected($event)" accept="image/*,video/*"
+              style="display: none;">
+          </div>
+
+          <!-- Contacts Statuses -->
+          <div class="status-item" *ngFor="let userStatus of statuses" (click)="viewStatuses(userStatus)">
+            <div class="status-ring" [ngClass]="allStatusesViewed(userStatus) ? 'viewed' : 'unviewed'">
+              <img [src]="userStatus.profileImage || ''"
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
+            </div>
+            <span
+              style="margin-top: 4px; text-transform: capitalize; font-size: 12px; font-weight: 500; max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{
+              userStatus.firstname }} {{userStatus.lastname}}</span>
+          </div>
+        </div>
+
         <mat-list style="padding-top: 0;">
           <!-- Public Chat Option -->
           <mat-list-item (click)="selectUser(null)" [style.background]="selectedUser === null ? '#e0f7fa' : ''"
@@ -146,16 +176,24 @@
             Public Chat
           </ng-template>
         </div>
-        <!-- Search Bar -->
-        <div
-          style="display: flex; align-items: center; background: white; border-radius: 20px; padding: 4px 12px; border: 1px solid #ddd;">
-          <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: #888;">search</mat-icon>
-          <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()" placeholder="Search messages..."
-            style="border: none; outline: none; padding: 4px 8px; font-size: 14px; width: 160px; background: transparent;">
-          <mat-icon *ngIf="searchQuery" (click)="searchQuery = ''; loadMessages()"
-            style="font-size: 16px; width: 16px; height: 16px; color: #888; cursor: pointer;" title="Clear">
-            close
-          </mat-icon>
+        <!-- Header Actions (Search + Call) -->
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <!-- Search Bar -->
+          <div
+            style="display: flex; align-items: center; background: white; border-radius: 20px; padding: 4px 12px; border: 1px solid #ddd; width: 220px;">
+            <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: #888; flex-shrink: 0;">search</mat-icon>
+            <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()" placeholder="Search messages..."
+              style="border: none; outline: none; padding: 4px 8px; font-size: 14px; flex: 1; background: transparent; min-width: 0;">
+            <mat-icon *ngIf="searchQuery" (click)="searchQuery = ''; loadMessages()"
+              style="font-size: 16px; width: 16px; height: 16px; color: #888; cursor: pointer; flex-shrink: 0;" title="Clear">
+              close
+            </mat-icon>
+          </div>
+          
+          <!-- Video Call Button (Visible only when chatting with a specific user) -->
+          <button *ngIf="selectedUser" mat-icon-button color="primary" (click)="startVideoCall()" title="Video Call" style="background: #e3f2fd;">
+            <mat-icon>videocam</mat-icon>
+          </button>
         </div>
       </div>
       <div class="messages" #scrollMe>
@@ -246,6 +284,9 @@
               <span (click)="reactToMessage(m._id, '😮')">😮</span>
               <span (click)="reactToMessage(m._id, '😢')">😢</span>
               <span (click)="reactToMessage(m._id, '🙏')">🙏</span>
+              <span class="reaction-add-btn" (click)="openReactionEmojiPicker(m._id, $event)">
+                <mat-icon>add</mat-icon>
+              </span>
             </div>
           </div>
         </div>
@@ -312,7 +353,7 @@
         <div class="input-area" style="position: relative;">
 
           <!-- Extracted Emoji & GIF Picker Component -->
-          <app-emoji-picker *ngIf="showEmojis" #emojiPicker (emojiSelected)="addEmoji($event)"
+          <app-emoji-picker *ngIf="showEmojis" #emojiPicker [disableGif]="reactingToMessageId ? true : false" (emojiSelected)="addEmoji($event)"
             (gifSelected)="sendGifDirect($event)">
           </app-emoji-picker>
 
@@ -428,4 +469,120 @@
       </div>
     </div>
   </div>
+
+  <!-- Status Viewer Overlay -->
+  <div *ngIf="showStatusViewer && currentViewingStatusUser" class="status-viewer-overlay" (click)="closeStatusViewer()">
+    <div class="status-content" (click)="$event.stopPropagation()">
+      <!-- Progress Bars -->
+      <div class="status-progress-container">
+        <div *ngFor="let s of currentViewingStatusUser.statuses; let i = index" class="status-progress-bar">
+          <div class="status-progress-fill"
+            [style.width.%]="i < currentStatusIndex ? 100 : (i === currentStatusIndex ? statusProgress : 0)"></div>
+        </div>
+      </div>
+      <!-- Header -->
+      <div class="status-header">
+        <img [src]="currentViewingStatusUser.profileImage || ''" style="background: #ccc;" />
+        <span style="text-transform: capitalize;">{{ currentViewingStatusUser.firstname }} {{currentViewingStatusUser.lastname}}</span>
+        <div style="flex: 1;"></div>
+        <button mat-icon-button *ngIf="currentViewingStatusUser.userEmail === currentUser"
+          (click)="deleteCurrentStatus(); $event.stopPropagation()"
+          style="color: white;"><mat-icon>delete</mat-icon></button>
+        <button mat-icon-button (click)="closeStatusViewer()"><mat-icon>close</mat-icon></button>
+      </div>
+      <!-- Media content -->
+      <img *ngIf="currentViewingStatusUser.statuses[currentStatusIndex].type === 'image'"
+        [src]="currentViewingStatusUser.statuses[currentStatusIndex].media" class="status-media" />
+      <video id="currentStatusVideo" *ngIf="currentViewingStatusUser.statuses[currentStatusIndex].type === 'video'"
+        [src]="currentViewingStatusUser.statuses[currentStatusIndex].media" autoplay muted class="status-media"
+        (ended)="nextStatus()"></video>
+
+      <!-- Footer (Viewers count) -->
+      <div class="status-footer" *ngIf="currentViewingStatusUser.userEmail === currentUser"
+        (click)="toggleViewersList(); $event.stopPropagation()">
+        <mat-icon style="font-size: 28px; width: 28px; height: 28px;">keyboard_arrow_up</mat-icon>
+        <span style="display: flex; align-items: center; gap: 5px;"><mat-icon
+            style="font-size: 16px; width: 16px; height: 16px;">visibility</mat-icon> {{
+          currentViewingStatusUser.statuses[currentStatusIndex].viewerDetails?.length || 0 }} views</span>
+      </div>
+      
+      <!-- Reply Input (For other users' statuses) -->
+      <div class="status-reply-container" *ngIf="currentViewingStatusUser.userEmail !== currentUser" (click)="$event.stopPropagation()">
+        <input type="text" placeholder="Reply..." [(ngModel)]="statusReplyText" 
+               (focus)="onReplyFocus()" (blur)="onReplyBlur()" (keyup.enter)="sendStatusReply()"
+               class="status-reply-input" />
+        <button mat-icon-button (click)="sendStatusReply()" [disabled]="!statusReplyText.trim()" style="color: white;">
+          <mat-icon>send</mat-icon>
+        </button>
+      </div>
+
+      <!-- Viewers List Panel -->
+      <div class="viewers-list-panel" *ngIf="showViewersList" (click)="$event.stopPropagation()">
+        <div class="viewers-header">
+          <h4 style="margin: 0; color: #333;">Viewed by {{
+            currentViewingStatusUser.statuses[currentStatusIndex].viewerDetails?.length || 0 }}</h4>
+          <button mat-icon-button (click)="toggleViewersList()"><mat-icon>close</mat-icon></button>
+        </div>
+        <mat-list>
+          <mat-list-item *ngFor="let v of currentViewingStatusUser.statuses[currentStatusIndex].viewerDetails">
+            <img [src]="v.profileImage || ''" matListItemIcon
+              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #ddd;" />
+            <div matListItemTitle>{{ v.firstname }} {{ v.lastname }}</div>
+          </mat-list-item>
+          <div *ngIf="!currentViewingStatusUser.statuses[currentStatusIndex].viewerDetails?.length"
+            style="padding: 20px; text-align: center; color: #888;">No views yet</div>
+        </mat-list>
+      </div>
+      <!-- Navigation Overlays -->
+      <div class="status-nav left" (click)="nextStatus(); $event.stopPropagation();"></div>
+      <!-- (For simplicity tap anywhere advances status) -->
+    </div>
+  </div>
+
+  <!-- Incoming Call Modal -->
+  <div *ngIf="incomingCallData" class="modal-overlay" style="z-index: 100000; background: rgba(0,0,0,0.85); flex-direction: column;">
+    <div class="modal-content mat-elevation-z8" style="text-align: center; max-width: 320px; background: #2c2c2c; color: white; border-radius: 20px; padding: 30px;">
+      <mat-icon style="font-size: 50px; width: 50px; height: 50px; margin-bottom: 10px; color: #4CAF50; animation: pulse 1s infinite;">phone_in_talk</mat-icon>
+      <h3 style="margin: 0; font-size: 22px; font-weight: 600;">Incoming Video Call</h3>
+      <p style="margin: 10px 0 30px; font-size: 18px; color: #ccc;">{{ incomingCallData.fromName }}</p>
+      <div style="display: flex; justify-content: space-around; gap: 30px; margin-top: 20px;">
+        <button mat-fab color="warn" (click)="rejectCall()" style="transform: scale(1.1);" title="Reject"><mat-icon>call_end</mat-icon></button>
+        <button mat-fab style="background-color: #4CAF50; color: white; transform: scale(1.1); animation: shake 1.5s infinite;" (click)="acceptCall()" title="Accept"><mat-icon>call</mat-icon></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outgoing / Active Call Fullscreen Overlay -->
+  <div *ngIf="isCalling || isInCall" class="modal-overlay" style="z-index: 99999; background: #000; flex-direction: column;">
+    <!-- Calling Status Banner -->
+    <div *ngIf="isCalling && !isInCall" style="position: absolute; top: 20%; color: white; text-align: center; z-index: 2;">
+      <mat-icon style="font-size: 50px; width: 50px; height: 50px; opacity: 0.8; animation: pulse 1.5s infinite;">phone_in_talk</mat-icon>
+      <h2>{{ isRinging ? 'Ringing...' : 'Calling...' }}</h2>
+    </div>
+
+    <!-- Remote Video (Full Screen) -->
+    <video #remoteVideoCall [hidden]="!isInCall" autoplay playsinline style="width: 100%; height: 100vh; object-fit: cover; background: #222;"></video>
+    
+    <!-- Local Video (Picture in Picture) -->
+    <video #localVideoCall autoplay muted playsinline 
+      style="position: absolute; bottom: 100px; right: 20px; width: 120px; height: 160px; border-radius: 12px; object-fit: cover; border: 2px solid white; z-index: 5; background: #333; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+    </video>
+
+    <!-- Call Controls -->
+    <div style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 10;">
+      <button mat-fab color="warn" (click)="endCall()" title="End Call">
+        <mat-icon>call_end</mat-icon>
+      </button>
+    </div>
+  </div>
+  <style>
+    @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes shake {
+      0% { transform: translate(1px, 1px) rotate(0deg) scale(1.1); }
+      10% { transform: translate(-1px, -2px) rotate(-10deg) scale(1.1); }
+      20% { transform: translate(-3px, 0px) rotate(10deg) scale(1.1); }
+      30% { transform: translate(3px, 2px) rotate(0deg) scale(1.1); }
+      100% { transform: translate(1px, -2px) rotate(-1deg) scale(1.1); }
+    }
+  </style>
 </div>

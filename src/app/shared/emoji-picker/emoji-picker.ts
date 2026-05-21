@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
@@ -10,7 +10,8 @@ import { environment } from '../../environments/environment';
   imports: [CommonModule, MatButtonModule, HttpClientModule],
   templateUrl: './emoji-picker.html'
 })
-export class EmojiPickerComponent implements OnInit {
+export class EmojiPickerComponent implements OnInit, OnChanges {
+  @Input() disableGif: boolean = false;
   @Output() emojiSelected = new EventEmitter<string>();
   @Output() gifSelected = new EventEmitter<string>();
 
@@ -33,7 +34,16 @@ export class EmojiPickerComponent implements OnInit {
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) { }
 
   ngOnInit() {
+    if (this.disableGif) {
+      this.pickerTab = 'emoji';
+    }
     this.loadGifs();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['disableGif'] && changes['disableGif'].currentValue) {
+      this.pickerTab = 'emoji';
+    }
   }
 
   loadGifs() {

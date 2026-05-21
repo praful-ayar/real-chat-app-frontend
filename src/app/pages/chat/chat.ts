@@ -71,6 +71,9 @@ export class Chat implements OnInit, OnDestroy {
   @ViewChild('video') video!: ElementRef;
   @ViewChild('canvas') canvas!: ElementRef;
   @ViewChild('mediaInput') mediaInput!: ElementRef;
+  @ViewChild('statusInput') statusInput!: ElementRef;
+  @ViewChild('localVideoCall') localVideoCall!: ElementRef;
+  @ViewChild('remoteVideoCall') remoteVideoCall!: ElementRef;
 
   stream: any;
   message = '';
@@ -106,6 +109,31 @@ export class Chat implements OnInit, OnDestroy {
   contactSearchTimeout: any;
   pendingRequests: any[] = [];
   showReactionPopup: string | null = null;
+  reactingToMessageId: string | null = null;
+
+  // Stories / Status features
+  statuses: any[] = [];
+  myStatus: any = null;
+  showStatusViewer = false;
+  currentViewingStatusUser: any = null;
+  currentStatusIndex = 0;
+  statusProgressTimer: any;
+  statusProgress = 0;
+  showViewersList = false;
+  statusReplyText: string = '';
+
+  // Video Calling features
+  peerConnection: RTCPeerConnection | null = null;
+  localStreamCall: MediaStream | null = null;
+  remoteStreamCall: MediaStream | null = null;
+  isCalling = false;
+  isInCall = false;
+  isRinging = false;
+  incomingCallData: any = null;
+  callRemoteUser: string | null = null;
+  pendingIceCandidates: any[] = [];
+  ringtoneAudio: HTMLAudioElement | null = null;
+  dialToneAudio: HTMLAudioElement | null = null;
 
   constructor(
     private socket: SocketService,
@@ -154,6 +182,8 @@ export class Chat implements OnInit, OnDestroy {
     // Load contacts first
     await this.fetchMyContacts();
     await this.fetchRequests();
+    // Load statuses
+    await this.fetchStatuses();
 
     // Load messages (will automatically load private chat if restored above)
     this.loadMessages();
@@ -293,6 +323,74 @@ export class Chat implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }
       });
+    });
+
+    // Video Calling Socket Listeners
+    this.socket.socket.on("incomingCall", (data: any) => {
+      this.zone.run(() => {
+        // Ignore if we are already in a call
+        if (this.isInCall || this.isCalling) {
+          this.socket.socket.emit("endCall", { to: data.from });
+          return;
+        }
+        this.incomingCallData = data;
+        this.playRingtone();
+        this.socket.socket.emit("callRinging", { to: data.from });
+
+        // Show Browser Notification for Incoming Call
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const notif = new Notification(`Incoming Video Call`, {
+            body: `${data.fromName} is calling you...`,
+            requireInteraction: true
+          });
+          notif.onclick = () => {
+            window.focus();
+            notif.close();
+          };
+        }
+
+        this.cdr.detectChanges();
+      });
+    });
+
+    this.socket.socket.on("callRinging", () => {
+      this.zone.run(() => {
+        this.isRinging = true;
+        this.cdr.detectChanges();
+      });
+    });
+
+    this.socket.socket.on("callAccepted", (signal: any) => {
+      this.zone.run(async () => {
+        this.stopDialTone();
+        if (this.peerConnection) {
+          await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+          
+          // Apply any buffered ICE candidates
+          this.pendingIceCandidates.forEach(c => {
+            this.peerConnection!.addIceCandidate(new RTCIceCandidate(c)).catch(e => console.error(e));
+          });
+          this.pendingIceCandidates = [];
+
+          this.isCalling = false;
+          this.isInCall = true;
+          this.cdr.detectChanges();
+        }
+      });
+    });
+
+    this.socket.socket.on("iceCandidate", (candidate: any) => {
+      this.zone.run(() => {
+        if (this.peerConnection && this.peerConnection.remoteDescription) {
+          this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error(e));
+        } else {
+          this.pendingIceCandidates.push(candidate); // Save it to apply after accepting
+        }
+      });
+    });
+
+    this.socket.socket.on("callEnded", () => {
+      this.zone.run(() => { this.cleanupCall(); this.cdr.detectChanges(); });
     });
   }
 
@@ -447,6 +545,7 @@ export class Chat implements OnInit, OnDestroy {
       if (!clickedInsideButton && !clickedInsidePicker) {
         this.zone.run(() => {
           this.showEmojis = false;
+                this.reactingToMessageId = null;
         });
       }
 
@@ -460,11 +559,26 @@ export class Chat implements OnInit, OnDestroy {
 
   toggleEmojis() {
     this.showEmojis = !this.showEmojis;
+    this.reactingToMessageId = null; // Typing area ke liye use ho to reaction reset kar do
+  }
+
+  openReactionEmojiPicker(msgId: string | undefined, event: MouseEvent) {
+    if (!msgId) return;
+    event.stopPropagation();
+    this.reactingToMessageId = msgId;
+    this.showReactionPopup = null;
+    this.showEmojis = true;
   }
 
   addEmoji(emoji: string) {
-    this.message += emoji;
-    this.messageInput.nativeElement.focus();
+    if (this.reactingToMessageId) {
+      this.reactToMessage(this.reactingToMessageId, emoji);
+      this.reactingToMessageId = null;
+      this.showEmojis = false;
+    } else {
+      this.message += emoji;
+      this.messageInput.nativeElement.focus();
+    }
   }
 
   toggleReactionPopup(msgId: string | undefined, event: MouseEvent) {
@@ -559,6 +673,10 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   sendGifDirect(gifUrl: string) {
+    if (this.reactingToMessageId) {
+      alert("GIFs cannot be used as reactions. Please select an emoji.");
+      return;
+    }
     if (gifUrl && gifUrl.trim() !== '') {
       const currentMsg = this.message;
       this.message = gifUrl.trim();
@@ -714,6 +832,11 @@ export class Chat implements OnInit, OnDestroy {
     this.socket.socket.off('contactRequestReceived');
     this.socket.socket.off('contactRequestAccepted');
     this.socket.socket.off('messageReaction');
+    this.socket.socket.off('incomingCall');
+    this.socket.socket.off('callRinging');
+    this.socket.socket.off('callAccepted');
+    this.socket.socket.off('iceCandidate');
+    this.socket.socket.off('callEnded');
   }
 
   logout() {
@@ -888,6 +1011,14 @@ export class Chat implements OnInit, OnDestroy {
           const data = await response.json();
           this.zone.run(() => {
             this.searchResults = data;
+
+            const searchOnline = data.filter((c: any) => c.isOnline).map((c: any) => c.email);
+            searchOnline.forEach((email: string) => {
+              if (!this.onlineUsers.includes(email)) {
+                this.onlineUsers.push(email);
+              }
+            });
+
             this.cdr.detectChanges();
           });
         }
@@ -915,6 +1046,14 @@ export class Chat implements OnInit, OnDestroy {
         const data = await response.json();
         this.zone.run(() => {
           this.myContacts = data;
+
+          const initialOnline = data.filter((c: any) => c.isOnline).map((c: any) => c.email);
+          initialOnline.forEach((email: string) => {
+            if (!this.onlineUsers.includes(email)) {
+              this.onlineUsers.push(email);
+            }
+          });
+
           this.cdr.detectChanges();
         });
       }
@@ -970,5 +1109,386 @@ export class Chat implements OnInit, OnDestroy {
         });
       }
     } catch (error) { console.error('Reject request failed', error); }
+  }
+
+  // ========== STORIES / STATUS LOGIC ==========
+  async fetchStatuses() {
+    try {
+      const response = await fetch(`${environment.apiUrl}/statuses`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        this.zone.run(() => {
+          this.myStatus = data.find((s: any) => s.userEmail === this.currentUser) || null;
+          this.statuses = data.filter((s: any) => s.userEmail !== this.currentUser);
+          this.cdr.detectChanges();
+        });
+      }
+    } catch (err) { console.error('Failed to fetch statuses', err); }
+  }
+
+  onStatusSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert("Status size exceeds 10MB limit.");
+        return;
+      }
+      const type = file.type.startsWith('video/') ? 'video' : 'image';
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.zone.run(() => {
+          this.uploadStatus(e.target.result, type);
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+    if (this.statusInput) this.statusInput.nativeElement.value = '';
+  }
+
+  async uploadStatus(mediaUrl: string, type: string) {
+    try {
+      const response = await fetch(`${environment.apiUrl}/statuses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ media: mediaUrl, type })
+      });
+      if (response.ok) {
+        this.fetchStatuses(); // Refresh statuses after uploading
+      }
+    } catch (err) { console.error('Failed to upload status', err); }
+  }
+
+  allStatusesViewed(userGroup: any) {
+    if (!this.currentUser) return false;
+    if (userGroup.userEmail === this.currentUser) return true;
+    return userGroup.statuses.every((s: any) => s.viewers?.includes(this.currentUser));
+  }
+
+  viewStatuses(userGroup: any) {
+    this.currentViewingStatusUser = userGroup;
+    this.currentStatusIndex = 0;
+    this.showStatusViewer = true;
+    this.startStatusTimer();
+  }
+
+  startStatusTimer() {
+    if (this.statusProgressTimer) clearInterval(this.statusProgressTimer);
+    this.statusProgress = 0;
+
+    const currentStatus = this.currentViewingStatusUser.statuses[this.currentStatusIndex];
+
+    if (currentStatus && !currentStatus.viewers?.includes(this.currentUser) && currentStatus.userEmail !== this.currentUser) {
+      this.markStatusViewed(currentStatus._id);
+      currentStatus.viewers.push(this.currentUser);
+    }
+
+    this.resumeStatusTimer();
+  }
+
+  pauseStatusTimer() {
+    if (this.statusProgressTimer) clearInterval(this.statusProgressTimer);
+    const videoEl = document.getElementById('currentStatusVideo') as HTMLVideoElement;
+    if (videoEl) videoEl.pause();
+  }
+
+  resumeStatusTimer() {
+    const currentStatus = this.currentViewingStatusUser.statuses[this.currentStatusIndex];
+
+    // Auto progress setup (5 seconds per image/text)
+    if (currentStatus.type === 'image' || currentStatus.type === 'text') {
+      const step = 100 / (5000 / 50); // 50ms intervals
+      this.statusProgressTimer = setInterval(() => {
+        this.statusProgress += step;
+        if (this.statusProgress >= 100) {
+          this.zone.run(() => this.nextStatus());
+        }
+        this.cdr.detectChanges();
+      }, 50);
+    } else if (currentStatus.type === 'video') {
+      const videoEl = document.getElementById('currentStatusVideo') as HTMLVideoElement;
+      if (videoEl) videoEl.play();
+    }
+  }
+
+  toggleViewersList() {
+    this.showViewersList = !this.showViewersList;
+    if (this.showViewersList) {
+      this.pauseStatusTimer();
+    } else {
+      this.resumeStatusTimer();
+    }
+  }
+
+  onReplyFocus() {
+    this.pauseStatusTimer();
+  }
+
+  onReplyBlur() {
+    if (!this.statusReplyText.trim()) {
+      this.resumeStatusTimer();
+    }
+  }
+
+  async sendStatusReply() {
+    if (!this.statusReplyText.trim() || !this.currentUser || !this.currentViewingStatusUser) return;
+    
+    const currentStatus = this.currentViewingStatusUser.statuses[this.currentStatusIndex];
+    const receiverEmail = this.currentViewingStatusUser.userEmail;
+    
+    const payload: any = {
+      email: this.currentUser,
+      text: this.statusReplyText.trim(),
+      receiver: receiverEmail,
+      replyTo: currentStatus._id,
+      replyToText: currentStatus.media, // Frontend se hum abhi media hi upload kar rahe hain
+      replyToSender: 'Status' // Chat bubble me 'Replying to Status' dikhane ke liye
+    };
+
+    try {
+      const response = await fetch(`${environment.apiUrl}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const newMsg = await response.json();
+        // Hum manually yaha list me push karne ki bajaye usko socket event ke aane par handle kar lenge
+        // jisse real-time updates synchronize rahenge.
+      }
+    } catch (err) {
+      console.error('Failed to send status reply via API:', err);
+    }
+
+    this.statusReplyText = '';
+    this.nextStatus(); // Reply dene ke baad next status par move kar jayega
+  }
+
+  async deleteCurrentStatus() {
+    const currentStatus = this.currentViewingStatusUser.statuses[this.currentStatusIndex];
+    if (!currentStatus) return;
+    try {
+      const response = await fetch(`${environment.apiUrl}/statuses/${currentStatus._id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        this.currentViewingStatusUser.statuses.splice(this.currentStatusIndex, 1);
+        if (this.currentViewingStatusUser.statuses.length === 0) {
+          this.closeStatusViewer();
+        } else {
+          if (this.currentStatusIndex >= this.currentViewingStatusUser.statuses.length) {
+            this.currentStatusIndex = this.currentViewingStatusUser.statuses.length - 1;
+          }
+          this.startStatusTimer();
+        }
+        this.fetchStatuses();
+      }
+    } catch (e) {
+      console.error('Failed to delete status', e);
+    }
+  }
+
+  async markStatusViewed(statusId: string) {
+    try {
+      await fetch(`${environment.apiUrl}/statuses/${statusId}/view`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+    } catch (e) { }
+  }
+
+  nextStatus() {
+    if (this.currentStatusIndex < this.currentViewingStatusUser.statuses.length - 1) {
+      this.currentStatusIndex++;
+      this.startStatusTimer();
+    } else {
+      this.closeStatusViewer();
+    }
+  }
+
+  closeStatusViewer() {
+    this.showStatusViewer = false;
+    this.currentViewingStatusUser = null;
+    this.showViewersList = false;
+    this.statusReplyText = '';
+    if (this.statusProgressTimer) clearInterval(this.statusProgressTimer);
+    this.fetchStatuses(); // Re-fetch to update viewed rings
+  }
+
+  // ========== VIDEO CALLING LOGIC ==========
+  
+  async startVideoCall() {
+    if (!this.selectedUser) return;
+    
+    const streamSuccess = await this.setupLocalStream();
+    if (!streamSuccess) {
+      alert("Camera or Microphone access is required to make a video call.");
+      return;
+    }
+
+    this.callRemoteUser = this.selectedUser;
+    this.isCalling = true;
+    this.isRinging = false;
+    this.playDialTone();
+    this.cdr.detectChanges();
+    
+    this.setupPeerConnection(this.callRemoteUser, true);
+  }
+
+  async setupLocalStream(): Promise<boolean> {
+    try {
+      this.localStreamCall = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setTimeout(() => {
+        if (this.localVideoCall && this.localVideoCall.nativeElement) {
+          this.localVideoCall.nativeElement.srcObject = this.localStreamCall;
+        }
+      }, 100);
+      return true;
+    } catch (e) {
+      console.error("Failed to get local stream", e);
+      return false;
+    }
+  }
+
+  setupPeerConnection(remoteUser: string, isInitiator: boolean) {
+    // Using Google's public STUN servers for WebRTC connection
+    this.peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
+    });
+
+    if (this.localStreamCall) {
+      this.localStreamCall.getTracks().forEach(track => this.peerConnection!.addTrack(track, this.localStreamCall!));
+    }
+
+    this.peerConnection.ontrack = (event) => {
+      this.zone.run(() => {
+        this.remoteStreamCall = event.streams[0];
+        setTimeout(() => {
+          if (this.remoteVideoCall && this.remoteVideoCall.nativeElement) {
+            this.remoteVideoCall.nativeElement.srcObject = this.remoteStreamCall;
+          }
+        }, 100);
+      });
+    };
+
+    this.peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        this.socket.socket.emit("iceCandidate", { to: remoteUser, candidate: event.candidate });
+      }
+    };
+
+    if (isInitiator) {
+      this.peerConnection.createOffer()
+        .then(offer => this.peerConnection!.setLocalDescription(offer))
+        .then(() => {
+          this.socket.socket.emit("callUser", {
+            userToCall: remoteUser,
+            signalData: this.peerConnection!.localDescription,
+            from: this.currentUser,
+            fromName: this.currentUserName
+          });
+        }).catch(e => console.error(e));
+    }
+  }
+
+  async acceptCall() {
+    this.stopRingtone();
+    this.isInCall = true;
+    this.callRemoteUser = this.incomingCallData.from;
+    const signal = this.incomingCallData.signal;
+    this.incomingCallData = null;
+    this.cdr.detectChanges();
+
+    const streamSuccess = await this.setupLocalStream();
+    if (!streamSuccess) {
+      alert("Cannot answer without camera/microphone access.");
+      this.endCall();
+      return;
+    }
+
+    this.setupPeerConnection(this.callRemoteUser!, false);
+
+    await this.peerConnection!.setRemoteDescription(new RTCSessionDescription(signal));
+    
+    // Apply buffered ICE candidates
+    this.pendingIceCandidates.forEach(c => {
+      this.peerConnection!.addIceCandidate(new RTCIceCandidate(c)).catch(e => console.error(e));
+    });
+    this.pendingIceCandidates = [];
+
+    const answer = await this.peerConnection!.createAnswer();
+    await this.peerConnection!.setLocalDescription(answer);
+
+    this.socket.socket.emit("answerCall", { signal: this.peerConnection!.localDescription, to: this.callRemoteUser });
+  }
+
+  rejectCall() {
+    this.stopRingtone();
+    if (this.incomingCallData) {
+      this.socket.socket.emit("endCall", { to: this.incomingCallData.from });
+      this.incomingCallData = null;
+    }
+  }
+
+  endCall() {
+    this.stopDialTone();
+    this.stopRingtone();
+    if (this.callRemoteUser) this.socket.socket.emit("endCall", { to: this.callRemoteUser });
+    this.cleanupCall();
+  }
+
+  cleanupCall() {
+    this.stopDialTone();
+    this.stopRingtone();
+    this.isCalling = false;
+    this.isInCall = false;
+    this.isRinging = false;
+    this.incomingCallData = null;
+    this.callRemoteUser = null;
+    this.pendingIceCandidates = [];
+
+    if (this.localStreamCall) {
+      this.localStreamCall.getTracks().forEach(track => track.stop());
+      this.localStreamCall = null;
+    }
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
+    this.remoteStreamCall = null;
+  }
+
+  playRingtone() {
+      this.ringtoneAudio = new Audio('https://upload.wikimedia.org/wikipedia/commons/3/3d/Ring_classic_02.ogg');
+    this.ringtoneAudio.loop = true;
+    this.ringtoneAudio.play().catch(e => console.warn('Ringtone blocked by browser autoplay policy'));
+  }
+
+  stopRingtone() {
+    if (this.ringtoneAudio) {
+      this.ringtoneAudio.pause();
+      this.ringtoneAudio.currentTime = 0;
+      this.ringtoneAudio = null;
+    }
+  }
+
+  playDialTone() {
+  this.dialToneAudio = new Audio('https://upload.wikimedia.org/wikipedia/commons/c/cdd/UK_ringing_tone.ogg');
+    this.dialToneAudio.loop = true;
+    this.dialToneAudio.play().catch(e => console.warn('Dial tone blocked by browser autoplay policy'));
+  }
+
+  stopDialTone() {
+    if (this.dialToneAudio) {
+      this.dialToneAudio.pause();
+      this.dialToneAudio.currentTime = 0;
+      this.dialToneAudio = null;
+    }
   }
 }
