@@ -99,6 +99,7 @@ export class Chat implements OnInit, OnDestroy {
   editingMessage: ChatMessage | null = null;
   autoTranslate: boolean = false;
   isTranslating: boolean = false;
+  isMobileChatView: boolean = false;
   searchQuery: string = '';
   searchTimeout: any;
   targetLanguage: string = 'English';
@@ -477,6 +478,11 @@ export class Chat implements OnInit, OnDestroy {
     localStorage.setItem('unreadCounts', JSON.stringify(this.unreadCounts));
     this.typingUsers = []
     this.loadMessages();
+    this.isMobileChatView = true;
+  }
+
+  backToSidebar() {
+    this.isMobileChatView = false;
   }
 
   onSearchChange() {

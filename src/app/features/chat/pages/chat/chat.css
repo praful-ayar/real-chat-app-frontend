@@ -96,7 +96,7 @@ body {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
 }
 
 .message-wrapper.me {
@@ -104,10 +104,8 @@ body {
 }
 
 .message {
-  max-width: 65%;
   padding: 10px 16px;
   border-radius: 12px;
-  background: #ffffff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   position: relative;
   line-height: 1.5;
@@ -133,7 +131,7 @@ body {
 
 .msg-content {
   font-size: 15px;
-  color: #262626;
+  color: #fff;
   word-wrap: break-word;
 }
 
@@ -190,9 +188,9 @@ body {
 }
 
 .action-btn {
-  width: 32px !important;
-  height: 32px !important;
-  padding: 4px !important;
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0px !important;
   display: flex !important;
   justify-content: center;
   align-items: center;
@@ -487,9 +485,9 @@ body {
 }
 
 .status-icon {
-  font-size: 15px;
-  width: 15px;
-  height: 15px;
+  font-size: 10px;
+  width: 10px;
+  height: 10px;
   margin-left: 4px;
 }
 
@@ -938,4 +936,41 @@ body {
   100% {
     transform: translate(1px, -2px) rotate(-1deg) scale(1.1);
   }
+}
+
+/* Modern Redesign Overrides */
+.input-area mat-form-field .mdc-notched-outline {
+  display: none !important;
+}
+
+.input-area mat-form-field .mat-mdc-text-field-wrapper {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.input-area input.mat-mdc-input-element {
+  padding: 8px 0 !important;
+  color: #1e293b !important;
+}
+
+.compact-list-item:hover {
+  background: #f1f5f9 !important;
+}
+
+.message-wrapper {
+  transition: transform 0.2s ease;
+}
+
+.message-wrapper:hover {
+  transform: translateY(-1px);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
 }
