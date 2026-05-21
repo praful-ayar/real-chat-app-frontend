@@ -6,11 +6,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../services/auth.service';
-import { SnackbarComponent } from "../../shared/snackbar/snackbar";
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { FormControl, FormGroupDirective, NgForm } from '@angular/forms';
+import { AuthService } from '../../../../core/services/auth.service';
+import { SnackbarComponent } from '../../../../shared/components/snackbar/snackbar';
 
 export class SubmitErrorStateMatcher implements ErrorStateMatcher {
   isSubmitted = false;
@@ -50,12 +50,18 @@ export class Login {
 
   matcher = new SubmitErrorStateMatcher();
 
+  // Industry Best Practice: Regex ko separate property mein rakhein for reusability
+  private readonly emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  get isEmailValid(): boolean {
+    return this.emailRegex.test(this.email);
+  }
+
   get isFormValid(): boolean {
-    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email);
     if (this.isLoginMode) {
-      return !!(isEmailValid && this.password.trim());
+      return !!(this.isEmailValid && this.password.trim());
     }
-    return !!(isEmailValid && this.firstname.trim() && this.lastname.trim() && this.password.trim() && this.confirmpassword.trim());
+    return !!(this.isEmailValid && this.firstname.trim() && this.lastname.trim() && this.password.trim() && this.confirmpassword.trim());
   }
 
   toggleMode() {
@@ -68,25 +74,24 @@ export class Login {
     this.matcher.isSubmitted = false;
   }
 
+  // Industry Best Practice: Reusable method for snackbar handling
+  private showSnackbar(message: string, isError: boolean = false) {
+    this.snackBar.openFromComponent(SnackbarComponent, {
+      data: { message },
+      duration: 3000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom',
+      panelClass: [isError ? 'error-snackbar' : 'success-snackbar']
+    });
+  }
+
   async submit() {
     this.matcher.isSubmitted = true;
-    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email);
-    if (!isEmailValid || !this.password.trim()) return;
+    if (!this.isFormValid) return;
 
-    if (this.isLoginMode) {
-      if (!isEmailValid || !this.password.trim()) return;
-    } else {
-      if (!isEmailValid || !this.firstname || !this.lastname || !this.password.trim() || !this.confirmpassword.trim()) return;
-      if (this.password.trim() !== this.confirmpassword.trim()) {
-        this.snackBar.openFromComponent(SnackbarComponent, {
-          data: { message: "Passwords do not match" },
-          duration: 3000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom',
-          panelClass: ['error-snackbar']
-        });
-        return;
-      }
+    if (!this.isLoginMode && this.password.trim() !== this.confirmpassword.trim()) {
+      this.showSnackbar("Passwords do not match", true);
+      return;
     }
 
     this.isLoading = true;
@@ -94,11 +99,14 @@ export class Login {
       let res: any;
       if (this.isLoginMode) {
         res = await this.authService.login(this.email, this.password.trim());
-        if (res && res.token) localStorage.setItem('token', res.token);
-        if (res && res.email) localStorage.setItem('user', res.email);
-        if (res && res.firstname) localStorage.setItem('firstname', res.firstname);
-        if (res && res.lastname) localStorage.setItem('lastname', res.lastname);
-        if (res && res.profileImage) localStorage.setItem('profileImage', res.profileImage);
+        // Note: Ek standard architecture mein LocalStorage ka logic AuthService ya TokenService mein hona chahiye.
+        if (res) {
+          if (res.token) localStorage.setItem('token', res.token);
+          if (res.email) localStorage.setItem('user', res.email);
+          if (res.firstname) localStorage.setItem('firstname', res.firstname);
+          if (res.lastname) localStorage.setItem('lastname', res.lastname);
+          if (res.profileImage) localStorage.setItem('profileImage', res.profileImage);
+        }
         this.router.navigate(['/chat']);
       } else {
         res = await this.authService.register({
@@ -108,24 +116,11 @@ export class Login {
           password: this.password,
           confirmpassword: this.confirmpassword
         });
-        this.snackBar.openFromComponent(SnackbarComponent, {
-          data: { message: 'Registration successful! Please login.' },
-          duration: 3000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom',
-          panelClass: ['success-snackbar']
-        });
+        this.showSnackbar('Registration successful! Please login.', false);
         this.toggleMode();
       }
     } catch (err: any) {
-      this.isLoading = false;
-      this.snackBar.openFromComponent(SnackbarComponent, {
-        data: { message: err.message || 'Authentication failed' },
-        duration: 3000,
-        horizontalPosition: 'center',
-        verticalPosition: 'bottom',
-        panelClass: ['error-snackbar']
-      });
+      this.showSnackbar(err.message || 'Authentication failed', true);
     } finally {
       this.isLoading = false;
       this.cdr.detectChanges();

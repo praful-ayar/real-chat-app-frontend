@@ -14,10 +14,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
-import { SocketService } from '../../services/socket.service';
-import { AuthService } from '../../services/auth.service';
-import { environment } from '../../environments/environment';
-import { EmojiPickerComponent } from '../../shared/emoji-picker/emoji-picker';
+import { EmojiPickerComponent } from '../../../../shared/emoji-picker/emoji-picker';
+import { SocketService } from '../../../../services/socket.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
+
 
 export interface ChatMessage {
   _id?: string;
@@ -559,7 +560,7 @@ export class Chat implements OnInit, OnDestroy {
 
   toggleEmojis() {
     this.showEmojis = !this.showEmojis;
-    this.reactingToMessageId = null; // Typing area ke liye use ho to reaction reset kar do
+    this.reactingToMessageId = null;
   }
 
   openReactionEmojiPicker(msgId: string | undefined, event: MouseEvent) {
@@ -1245,8 +1246,8 @@ export class Chat implements OnInit, OnDestroy {
       text: this.statusReplyText.trim(),
       receiver: receiverEmail,
       replyTo: currentStatus._id,
-      replyToText: currentStatus.media, // Frontend se hum abhi media hi upload kar rahe hain
-      replyToSender: 'Status' // Chat bubble me 'Replying to Status' dikhane ke liye
+      replyToText: currentStatus.media, 
+      replyToSender: 'Status'
     };
 
     try {
@@ -1258,15 +1259,14 @@ export class Chat implements OnInit, OnDestroy {
 
       if (response.ok) {
         const newMsg = await response.json();
-        // Hum manually yaha list me push karne ki bajaye usko socket event ke aane par handle kar lenge
-        // jisse real-time updates synchronize rahenge.
+      
       }
     } catch (err) {
       console.error('Failed to send status reply via API:', err);
     }
 
     this.statusReplyText = '';
-    this.nextStatus(); // Reply dene ke baad next status par move kar jayega
+    this.nextStatus(); 
   }
 
   async deleteCurrentStatus() {
@@ -1322,7 +1322,6 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   // ========== VIDEO CALLING LOGIC ==========
-  
   async startVideoCall() {
     if (!this.selectedUser) return;
     
