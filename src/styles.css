@@ -1,7 +1,41 @@
 /* src/styles.css */
 
-/* Angular Material Theme Import */
-@import '@angular/material/prebuilt-themes/indigo-pink.css';
+:root {
+  /* Brand */
+  --primary: #0D9488;
+  --primary-hover: #0F766E;
+  --secondary: #0284C7;
+  --accent: #34D399;
+
+  /* Layout */
+  --background: #F1F5F9;
+  --surface: rgba(255, 255, 255, 0.7);
+  --sidebar: rgba(255, 255, 255, 0.8);
+  --navbar: rgba(255, 255, 255, 0.65);
+
+  /* Border */
+  --border: rgba(13, 148, 136, 0.12);
+  --divider: rgba(13, 148, 136, 0.08);
+
+  /* Text */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --placeholder: #94A3B8;
+
+  /* Status */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #0EA5E9;
+
+  /* Chat */
+  --chat-sender: #0D9488;
+  --chat-receiver: rgba(255, 255, 255, 0.9);
+
+  /* Hover */
+  --hover: rgba(13, 148, 136, 0.04);
+  --active: rgba(13, 148, 136, 0.08);
+}
 
 html, body {
   height: 100%;
@@ -9,28 +43,50 @@ html, body {
 
 body {
   margin: 0;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
-  background-color: #f0f2f5;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--background);
+  color: var(--text-primary);
 }
 
 /* Custom Theme for Error Snackbar */
 .error-snackbar {
-  --mdc-snackbar-container-color: #f44336; /* Error Red background */
+  --mdc-snackbar-container-color: var(--danger);
   --mdc-snackbar-supporting-text-color: #ffffff;
 }
 .error-snackbar .mdc-snackbar__surface {
-  background-color: #f44336 !important; /* Fallback override for background */
+  background-color: var(--danger) !important;
+  border-radius: 12px !important;
 }
 
 /* Custom Theme for Success Snackbar */
 .success-snackbar {
-  --mdc-snackbar-container-color: #4caf50; /* Success Green */
+  --mdc-snackbar-container-color: var(--success);
   --mdc-snackbar-supporting-text-color: #ffffff;
 }
 .success-snackbar .mdc-snackbar__surface {
-  background-color: #4caf50 !important; /* Fallback override for background */
+  background-color: var(--success) !important;
+  border-radius: 12px !important;
 }
 
 .no-padding-menu .mat-mdc-menu-content {
   padding: 0 !important;
+}
+
+/* Global scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 118, 110, 0.25); /* Teal primary tint */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 118, 110, 0.5);
 }

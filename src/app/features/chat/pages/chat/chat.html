@@ -1,62 +1,108 @@
 <div class="chat-wrapper"
-  style="height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f6f8fd 0%, #f1f5f9 100%); font-family: 'Inter', 'Segoe UI', sans-serif;">
-  <div class="container mat-elevation-z12"
-    style="display: flex; width: 95vw; max-width: 1400px; height: 90vh; background: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.08);">
+  style="position: relative; height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: var(--background); overflow: hidden; font-family: 'Inter', sans-serif;">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+  <div class="container mat-elevation-z24"
+    style="display: flex; width: 95vw; max-width: 1400px; height: 90vh; background: rgba(255, 255, 255, 0.45); border-radius: 24px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.65); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); box-shadow: 0 30px 60px rgba(15, 118, 110, 0.08); z-index: 1;">
     <!-- USERS SIDEBAR -->
     <div class="sidebar" [class.mobile-hidden]="isMobileChatView"
-      style="width: 380px; min-width: 380px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid #e2e8f0; background: #ffffff; z-index: 2;">
+      style="width: 280px; min-width: 280px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid rgba(13, 148, 136, 0.08); background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 2;">
       <!-- Add Contact UI for Sidebar -->
-      <div class="add-contact-section" style="padding: 24px 20px 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <h2 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">Messages
-          </h2>
+      <div class="add-contact-section" style="padding: 16px 16px 12px;">
+        <div style="padding:12px 16px;">
+          <img src="/icon.png" alt="ConnectHub" style="
+            width:180px;
+            height:auto;
+            display:block;
+        ">
         </div>
-        <mat-form-field appearance="outline" style="width: 100%; margin-bottom: -1.25em;">
-          <mat-label>Search & Add Contact</mat-label>
-          <input matInput placeholder="Name or Email..." [(ngModel)]="newContactEmail" (input)="onSearchContact()"
-            (keyup.enter)="addNewContact()" [matAutocomplete]="auto">
+        <!-- Modern Custom Search Box for Add Contact -->
+        <div class="chat-search-container"
+          style="width: 100%; height: 42px; box-sizing: border-box; margin-bottom: 12px;">
+          <mat-icon
+            style="font-size: 18px; width: 18px; height: 18px; color: var(--primary); flex-shrink: 0; margin-right: 8px;">person_search</mat-icon>
+          <input type="text" [(ngModel)]="newContactEmail" (input)="onSearchContact(); trigger.openPanel()"
+            (focus)="trigger.openPanel()" (keyup.enter)="addNewContact()" placeholder="Search Name or Email..."
+            [matAutocomplete]="auto" #trigger="matAutocompleteTrigger"
+            style="border: none; outline: none; padding: 4px 0; font-size: 13.5px; flex: 1; background: transparent; min-width: 0; color: var(--text-primary);">
 
-          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="onContactSelected($event)">
-            <mat-option *ngFor="let user of searchResults" [value]="user.email">
-              <div style="display: flex; align-items: center; gap: 10px;">
+          <mat-icon *ngIf="newContactEmail" (click)="clearContactSearch(); $event.stopPropagation()"
+            style="font-size: 18px; width: 18px; height: 18px; color: #888; cursor: pointer; flex-shrink: 0; margin-right: 8px;"
+            title="Clear">
+            close
+          </mat-icon>
+
+          <button mat-icon-button (click)="addNewContact(); $event.stopPropagation()"
+            [disabled]="!newContactEmail.trim()"
+            style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            <mat-icon style="font-size: 20px; width: 20px; height: 20px; color: var(--primary);">person_add</mat-icon>
+          </button>
+
+          <mat-autocomplete #auto="matAutocomplete" (optionSelected)="onContactSelected($event)"
+            class="custom-autocomplete-panel" [panelWidth]="248">
+            <mat-option *ngIf="searchResults.length === 0 && newContactEmail.trim() !== ''" disabled
+              class="custom-mat-option">
+              <span style="font-size: 13px;">No user found. Press enter to invite.</span>
+            </mat-option>
+            <mat-option *ngFor="let user of searchResults" [value]="user.email" class="custom-mat-option user-option">
+              <div style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 4px 0;">
                 <img *ngIf="user.profileImage" [src]="user.profileImage"
-                  style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
-                <mat-icon *ngIf="!user.profileImage" color="primary">person</mat-icon>
-                <span style="font-size: 14px;">{{user.firstname}} {{user.lastname}} ({{user.email}})</span>
+                  style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(13, 148, 136, 0.2);">
+                <mat-icon *ngIf="!user.profileImage" color="primary"
+                  style="font-size: 36px; width: 36px; height: 36px; opacity: 0.8;">account_circle</mat-icon>
+                <div style="display: flex; flex-direction: column; line-height: 1.4;">
+                  <span style="font-weight: 600; color: var(--text-primary); font-size: 14px;">{{user.firstname}}
+                    {{user.lastname}}</span>
+                  <span style="font-size: 12px; color: var(--text-secondary);">{{user.email}}</span>
+                </div>
               </div>
             </mat-option>
           </mat-autocomplete>
-
-          <button mat-icon-button matSuffix color="primary" (click)="addNewContact()" [disabled]="!newContactEmail">
-            <mat-icon>person_add</mat-icon>
-          </button>
-        </mat-form-field>
+        </div>
       </div>
       <div style="flex: 1; overflow-y: auto;">
 
         <!-- Pending Requests Section -->
-        <div class="sidebar-requests" *ngIf="pendingRequests.length > 0">
-          <div class="sidebar-header">
-            <h3>Contact Requests</h3>
+        <div class="sidebar-requests" *ngIf="pendingRequests.length > 0"
+          style="padding: 0 4px 12px; border-bottom: 1px solid rgba(13, 148, 136, 0.08);">
+          <div class="sidebar-header" style="padding: 12px 12px 8px;">
+            <h3
+              style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin: 0;">
+              Contact Requests</h3>
           </div>
-          <mat-list style="padding-top: 0;">
-            <mat-list-item *ngFor="let req of pendingRequests" style="height: auto; padding: 10px 0;">
-              <img *ngIf="req.senderUser?.profileImage" [src]="req.senderUser.profileImage" matListItemIcon
-                style="width:40px;height:40px;border-radius:50%;object-fit:cover;margin:auto 10px;">
-              <mat-icon *ngIf="!req.senderUser?.profileImage" matListItemIcon color="primary"
-                style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin:auto 10px; display: flex; align-items: center; justify-content: center; background: #8c98e2; color: #fff;">person</mat-icon>
-              <div matListItemTitle class="list-item-content">
-                <span class="username-text">{{req.senderUser?.firstname}} {{req.senderUser?.lastname}}</span>
+
+          <div class="request-list" style="display: flex; flex-direction: column; gap: 6px;">
+            <div *ngFor="let req of pendingRequests" class="custom-request-item">
+              <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                <img *ngIf="req.senderUser?.profileImage" [src]="req.senderUser.profileImage"
+                  style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
+                <div *ngIf="!req.senderUser?.profileImage"
+                  style="width: 32px; height: 32px; border-radius: 50%; background: #97dbd5; display: flex; align-items: center; justify-content: center; color: #eeeaea; flex-shrink: 0;">
+                  <mat-icon
+                    style="font-size: 18px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">person</mat-icon>
+                </div>
+                <div style="display: flex; flex-direction: column; min-width: 0;">
+                  <span
+                    style="font-size: 13px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{req.senderUser?.firstname}} {{req.senderUser?.lastname}}
+                  </span>
+                  <span style="font-size: 10.5px; color: var(--text-secondary);">wants to connect</span>
+                </div>
               </div>
-              <div matListItemLine style="display: flex; gap: 8px; margin-top: 6px;">
-                <button mat-flat-button color="primary" style="height: 28px; font-size: 12px; padding: 0 12px;"
-                  (click)="acceptRequest(req._id)">Accept</button>
-                <button mat-stroked-button color="warn" style="height: 28px; font-size: 12px; padding: 0 12px;"
-                  (click)="rejectRequest(req._id)">Reject</button>
+
+              <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                <button class="request-btn-mini accept" (click)="acceptRequest(req._id)" title="Accept">
+                  <mat-icon
+                    style="font-size: 15px; width: 15px; height: 15px; display: flex; align-items: center; justify-content: center;">check</mat-icon>
+                </button>
+                <button class="request-btn-mini reject" (click)="rejectRequest(req._id)" title="Reject">
+                  <mat-icon
+                    style="font-size: 15px; width: 15px; height: 15px; display: flex; align-items: center; justify-content: center;">close</mat-icon>
+                </button>
               </div>
-            </mat-list-item>
-          </mat-list>
-          <mat-divider></mat-divider>
+            </div>
+          </div>
         </div>
 
         <div class="sidebar-header">
@@ -71,8 +117,13 @@
             <div class="my-status-add">
               <div class="status-ring" [ngClass]="myStatus ? (allStatusesViewed(myStatus) ? 'viewed' : 'unviewed') : ''"
                 (click)="myStatus ? viewStatuses(myStatus) : statusInput.click()">
-                <img [src]="profileImage || ''"
+                <img *ngIf="profileImage" [src]="profileImage"
                   style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
+                <div *ngIf="!profileImage"
+                  style="width: 50px; height: 50px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: #fff;">
+                  <mat-icon
+                    style="font-size: 24px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">person</mat-icon>
+                </div>
               </div>
               <mat-icon class="add-icon" (click)="statusInput.click(); $event.stopPropagation()">add</mat-icon>
             </div>
@@ -84,8 +135,13 @@
           <!-- Contacts Statuses -->
           <div class="status-item" *ngFor="let userStatus of statuses" (click)="viewStatuses(userStatus)">
             <div class="status-ring" [ngClass]="allStatusesViewed(userStatus) ? 'viewed' : 'unviewed'">
-              <img [src]="userStatus.profileImage || ''"
+              <img *ngIf="userStatus.profileImage" [src]="userStatus.profileImage"
                 style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
+              <div *ngIf="!userStatus.profileImage"
+                style="width: 50px; height: 50px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: #fff;">
+                <mat-icon
+                  style="font-size: 24px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">person</mat-icon>
+              </div>
             </div>
             <span
               style="margin-top: 4px; text-transform: capitalize; font-size: 12px; font-weight: 500; max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{
@@ -94,56 +150,48 @@
         </div>
 
         <mat-list style="padding-top: 0;">
-          <!-- Public Chat Option -->
-          <mat-list-item (click)="selectUser(null)"
-            [style.background]="selectedUser === null ? '#f1f5f9' : 'transparent'"
-            style="cursor: pointer; height: 64px; margin: 4px 12px; border-radius: 12px; width: auto; transition: all 0.2s ease;"
-            class="compact-list-item">
-            <mat-icon matListItemIcon color="primary"
-              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin:16px 10px 10px; display: flex; align-items: center; justify-content: center; background: #8c98e2; color: #fff;">group</mat-icon>
-            <div matListItemTitle class="list-item-content">
-              <span>Public Chat</span>
-              <span class="unread-badge" *ngIf="unreadCounts['public']">{{unreadCounts['public']}}</span>
-            </div>
-          </mat-list-item>
+
 
           <mat-divider></mat-divider>
 
           <!-- Online Users List -->
-          <mat-list-item *ngFor="let u of myContacts"
-            (click)="selectUser(u.email, u.firstname, u.lastname, u.profileImage)"
-            [style.background]="selectedUser === u.email ? '#f1f5f9' : 'transparent'"
-            style="cursor: pointer; height: 64px; margin: 4px 12px; border-radius: 12px; width: auto; transition: all 0.2s ease;"
-            class="compact-list-item">
-            <img *ngIf="u.profileImage" [src]="u.profileImage" matListItemIcon
-              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin:auto 10px;">
-            <mat-icon *ngIf="!u.profileImage" matListItemIcon color="primary"
-              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin:auto 10px; display: flex; align-items: center; justify-content: center; background: #8c98e2; color: #fff;">person</mat-icon>
-            <div matListItemTitle class="list-item-content">
-              <span class="username-text">{{u.firstname}} {{u.lastname || ''}}</span>
-              <span class="unread-badge" *ngIf="unreadCounts[u.email]">{{unreadCounts[u.email]}}</span>
+          <div *ngFor="let u of myContacts" (click)="selectUser(u.email, u.firstname, u.lastname, u.profileImage)"
+            [class.selected]="selectedUser === u.email" class="custom-contact-item">
+            <img *ngIf="u.profileImage" [src]="u.profileImage" class="contact-avatar">
+            <div *ngIf="!u.profileImage" class="contact-avatar-fallback">
+              <mat-icon
+                style="font-size: 20px; width: 20px; height: 20px; color: #fff; display: flex; align-items: center; justify-content: center;">person</mat-icon>
             </div>
-            <div matListItemLine class="online-status" *ngIf="isUserOnline(u.email)">Online</div>
-            <div matListItemLine class="offline-status" *ngIf="!isUserOnline(u.email)">Offline</div>
-          </mat-list-item>
+            <div class="contact-details">
+              <div class="contact-name-row">
+                <span class="contact-name">{{u.firstname}} {{u.lastname || ''}}</span>
+                <span class="unread-badge" *ngIf="unreadCounts[u.email]">{{unreadCounts[u.email]}}</span>
+              </div>
+              <div class="contact-status" [class.online]="isUserOnline(u.email)">
+                {{ isUserOnline(u.email) ? 'Online' : 'Offline' }}
+              </div>
+            </div>
+          </div>
         </mat-list>
       </div>
 
       <!-- Profile Settings Footer -->
       <div class="sidebar-footer"
-        style="padding: 16px 20px; border-top: 1px solid #e2e8f0; background: #f8fafc; box-shadow: 0 -4px 12px rgba(0,0,0,0.02);">
+        style="padding: 12px 16px; border-top: 1px solid rgba(13, 148, 136, 0.08); background: rgba(255, 255, 255, 0.9); box-shadow: 0 -4px 12px rgba(15, 118, 110, 0.03);">
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px; color: var(--text-primary);">
             <img *ngIf="profileImage" [src]="profileImage"
-              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-            <mat-icon *ngIf="!profileImage" color="primary"
-              style="font-size: 40px; width: 40px; height: 40px;">account_circle</mat-icon>
+              style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border);">
+            <mat-icon *ngIf="!profileImage"
+              style="font-size: 36px; width: 36px; height: 36px; color: var(--text-secondary);">account_circle</mat-icon>
             <div style="display: flex; flex-direction: column;">
-              <span style="font-weight: 500; font-size: 14px; text-transform: capitalize;">{{currentUserName}}</span>
+              <span
+                style="font-weight: 600; font-size: 13.5px; text-transform: capitalize; color: var(--text-primary);">{{currentUserName}}</span>
             </div>
           </div>
           <!-- Menu Trigger Button -->
-          <button mat-icon-button color="primary" [matMenuTriggerFor]="settingsMenu" title="Settings">
+          <button mat-icon-button style="color: var(--text-secondary);" [matMenuTriggerFor]="settingsMenu"
+            title="Settings">
             <mat-icon>settings</mat-icon>
           </button>
 
@@ -164,342 +212,390 @@
 
     <!-- CHAT AREA -->
     <div class="chat-area" [class.mobile-hidden]="!isMobileChatView"
-      style="flex: 1; display: flex; flex-direction: column; background: #f8fafc; position: relative;">
-      <!-- Active Chat Header Indicator -->
-      <div class="chat-area-header" style="padding: 0 24px;
+      style="flex: 1; display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); position: relative;">
+
+      <!-- DEFAULT WELCOME SCREEN WHEN NO USER SELECTED -->
+      <div *ngIf="!selectedUser"
+        style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; text-align: center; background: transparent;">
+        <div
+          style="padding: 40px; background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border-radius: 24px; box-shadow: 0 20px 40px rgba(13, 148, 136, 0.05); border: 1px solid rgba(13, 148, 136, 0.1);">
+          <mat-icon
+            style="font-size: 64px; width: 64px; height: 64px; color: var(--primary); margin-bottom: 16px; opacity: 0.9;">forum</mat-icon>
+          <h2
+            style="font-size: 24px; font-weight: 800; color: var(--text-primary); margin: 0 0 8px 0; letter-spacing: -0.5px;">
+            Welcome to ConnectHub</h2>
+          <p style="font-size: 14.5px; color: var(--text-secondary); margin: 0; max-width: 320px; line-height: 1.5;">
+            Select a contact from the sidebar or search for someone new to start chatting.</p>
+        </div>
+      </div>
+
+      <ng-container *ngIf="selectedUser">
+        <!-- Active Chat Header Indicator -->
+        <div class="chat-area-header" style="padding: 0 24px;
          height: 76px;
-         background-color: rgba(255, 255, 255, 0.9);
+         background-color: rgba(255, 255, 255, 0.75);
          backdrop-filter: blur(10px);
-         border-bottom: 1px solid #e2e8f0;
+         -webkit-backdrop-filter: blur(10px);
+         border-bottom: 1px solid rgba(13, 148, 136, 0.08);
          display: flex;
          align-items: center;
          justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 10px; font-weight: 500; text-transform: capitalize;">
-          <button mat-icon-button class="mobile-back-btn" (click)="backToSidebar()" title="Back">
-            <mat-icon>arrow_back</mat-icon>
-          </button>
-          <!-- Selected User -->
-          <ng-container *ngIf="selectedUser; else globalChat">
-            <img *ngIf="selectedUserImage" [src]="selectedUserImage"
-              style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
-            <mat-icon *ngIf="!selectedUserImage" color="primary"
-              style="object-fit:cover; font-size: 40px; width: 40px; height: 40px;">
-              account_circle
-            </mat-icon>
-            <span>{{ selectedUserName }}</span>
-          </ng-container>
-          <!-- Global Chat -->
-          <ng-template #globalChat>
-            <mat-icon color="primary" style="font-size: 40px; width: 40px; height: 40px;">group</mat-icon>
-            Public Chat
-          </ng-template>
-        </div>
-        <!-- Header Actions (Search + Call) -->
-        <div style="display: flex; align-items: center; gap: 15px;">
-          <!-- Search Bar -->
-          <div
-            style="display: flex; align-items: center; background: #f1f5f9; border-radius: 20px; padding: 6px 16px; border: 1px solid transparent; width: 240px; transition: all 0.3s ease;">
-            <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: #888; flex-shrink: 0;">search</mat-icon>
-            <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()" placeholder="Search messages..."
-              style="border: none; outline: none; padding: 4px 8px; font-size: 14px; flex: 1; background: transparent; min-width: 0;">
-            <mat-icon *ngIf="searchQuery" (click)="searchQuery = ''; loadMessages()"
-              style="font-size: 16px; width: 16px; height: 16px; color: #888; cursor: pointer; flex-shrink: 0;"
-              title="Clear">
-              close
-            </mat-icon>
-          </div>
+          <div style="display: flex; align-items: center; gap: 10px; font-weight: 500; text-transform: capitalize;">
+            <button mat-icon-button class="mobile-back-btn" (click)="backToSidebar()" title="Back">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <!-- Selected User -->
+            <ng-container *ngIf="selectedUser">
+              <img *ngIf="selectedUserImage" [src]="selectedUserImage"
+                style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+              <mat-icon *ngIf="!selectedUserImage" color="primary"
+                style="object-fit:cover; font-size: 40px; width: 40px; height: 40px;">
+                account_circle
+              </mat-icon>
+              <span>{{ selectedUserName }}</span>
+            </ng-container>
 
-          <!-- Video Call Button (Visible only when chatting with a specific user) -->
-          <button *ngIf="selectedUser" mat-icon-button color="primary" (click)="startVideoCall()" title="Video Call"
-            style="background: #e3f2fd;">
-            <mat-icon>videocam</mat-icon>
-          </button>
-        </div>
-      </div>
-      <div class="messages" #scrollMe
-        style="flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth;">
-        <div *ngFor="let m of messages" class="message-wrapper" [id]="'msg-' + m._id"
-          [class.me]="(m.email || m.username || m.user) === currentUser"
-          [style.align-self]="(m.email || m.username || m.user) === currentUser ? 'flex-end' : 'flex-start'"
-          [style.align-items]="(m.email || m.username || m.user) === currentUser ? 'flex-end' : 'flex-start'"
-          style="display: flex; flex-direction: column; max-width: 85%; width: fit-content;">
-          <div class="message"
-            [class.media-only]="getMediaType(m.text || m.message) === 'image' || getMediaType(m.text || m.message) === 'video' || isOnlyEmoji(m.text || m.message)"
-            [style.background]="(m.email || m.username || m.user) === currentUser ? '#4f46e5' : '#ffffff'"
-            [style.color]="(m.email || m.username || m.user) === currentUser ? '#ffffff' : '#1e293b'"
-            [style.border-bottom-right-radius]="(m.email || m.username || m.user) === currentUser ? '4px' : '20px'"
-            [style.border-bottom-left-radius]="(m.email || m.username || m.user) === currentUser ? '20px' : '4px'"
-            style="padding: 12px 18px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; font-size: 15px; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word; text-align: left;">
-            <div class="msg-sender" *ngIf="(m.email || m.username || m.user) !== currentUser" style="color: #4f46e5; font-size: 13px; font-weight: 600; margin-bottom: 4px;">{{m.firstname}}
-              {{m.lastname}}</div>
-            <!-- Reply Preview inside message bubble -->
-            <div *ngIf="m.replyTo" class="reply-preview" (click)="scrollToMessage(m.replyTo)" style="background: rgba(0,0,0,0.05); border-left: 4px solid #4f46e5; padding: 6px 10px; border-radius: 4px; margin-bottom: 8px; cursor: pointer;">
-              <div class="reply-sender" style="color: #4f46e5; font-weight: bold; font-size: 12px; margin-bottom: 2px;">{{ m.replyToSender }}</div>
-              <div class="reply-text" style="color: inherit; font-size: 13px; opacity: 0.8;">
-                <ng-container [ngSwitch]="getMediaType(m.replyToText)">
-                  <span *ngSwitchCase="'image'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> Image/GIF</span>
-                  <span *ngSwitchCase="'video'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">videocam</mat-icon> Video</span>
-                  <span *ngSwitchCase="'audio'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">audiotrack</mat-icon> Audio</span>
-                  <span *ngSwitchCase="'file'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">insert_drive_file</mat-icon> File</span>
-                  <span *ngSwitchDefault>
-                    {{ m.replyToText | slice:0:100 }}{{ (m.replyToText && m.replyToText.length > 100) ? '...' : '' }}
-                  </span>
-                </ng-container>
-              </div>
+          </div>
+          <!-- Header Actions (Search + Call) -->
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <!-- Search Bar -->
+            <div class="chat-search-container">
+              <mat-icon
+                style="font-size: 18px; width: 18px; height: 18px; color: #888; flex-shrink: 0;">search</mat-icon>
+              <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()" placeholder="Search messages..."
+                style="border: none; outline: none; padding: 4px 8px; font-size: 14px; flex: 1; background: transparent; min-width: 0; color: var(--text-primary);">
+              <mat-icon *ngIf="searchQuery" (click)="searchQuery = ''; loadMessages()"
+                style="font-size: 16px; width: 16px; height: 16px; color: #888; cursor: pointer; flex-shrink: 0;"
+                title="Clear">
+                close
+              </mat-icon>
             </div>
-            <div class="msg-content-wrapper"
-              style="display: flex; align-items: center; justify-content: space-between; gap: 8px; color: inherit;">
-              <div class="msg-content" style="color: inherit;">
-                <ng-container [ngSwitch]="getMediaType(m.text || m.message)">
-                  <ng-container *ngSwitchCase="'image'">
-                    <img [src]="m.text || m.message" class="message-media" alt="Image" />
+
+            <!-- Video Call Button (Visible only when chatting with a specific user) -->
+            <button *ngIf="selectedUser" mat-icon-button color="primary" (click)="startVideoCall()" title="Video Call"
+              style="background: #e3f2fd;">
+              <mat-icon>videocam</mat-icon>
+            </button>
+          </div>
+        </div>
+        <div class="messages" #scrollMe
+          style="flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; background: transparent;">
+          <div *ngFor="let m of messages" class="message-wrapper" [id]="'msg-' + m._id"
+            [class.me]="(m.email || m.username || m.user) === currentUser"
+            [style.align-self]="(m.email || m.username || m.user) === currentUser ? 'flex-end' : 'flex-start'"
+            [style.align-items]="(m.email || m.username || m.user) === currentUser ? 'flex-end' : 'flex-start'"
+            style="display: flex; flex-direction: column; max-width: 85%; width: fit-content;">
+            <div class="message"
+              [class.media-only]="getMediaType(m.text || m.message) === 'image' || getMediaType(m.text || m.message) === 'video' || isOnlyEmoji(m.text || m.message)"
+              [style.background]="(m.email || m.username || m.user) === currentUser ? 'var(--chat-sender)' : 'var(--chat-receiver)'"
+              [style.color]="(m.email || m.username || m.user) === currentUser ? '#ffffff' : 'var(--text-primary)'"
+              [style.border-bottom-right-radius]="(m.email || m.username || m.user) === currentUser ? '4px' : '20px'"
+              [style.border-bottom-left-radius]="(m.email || m.username || m.user) === currentUser ? '20px' : '4px'"
+              [style.border]="(m.email || m.username || m.user) === currentUser ? 'none' : '1px solid var(--border)'"
+              style="padding: 12px 18px; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; font-size: 15px; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word; text-align: left;">
+              <div class="msg-sender" *ngIf="(m.email || m.username || m.user) !== currentUser"
+                style="color: var(--primary); font-size: 13px; font-weight: 600; margin-bottom: 4px;">{{m.firstname}}
+                {{m.lastname}}</div>
+              <!-- Reply Preview inside message bubble -->
+              <div *ngIf="m.replyTo" class="reply-preview" (click)="scrollToMessage(m.replyTo)"
+                style="background: rgba(15, 118, 110, 0.05); border-left: 4px solid var(--primary); padding: 6px 10px; border-radius: 4px; margin-bottom: 8px; cursor: pointer;">
+                <div class="reply-sender"
+                  style="color: var(--primary); font-weight: bold; font-size: 12px; margin-bottom: 2px;">{{
+                  m.replyToSender }}</div>
+                <div class="reply-text" style="color: inherit; font-size: 13px; opacity: 0.8;">
+                  <ng-container [ngSwitch]="getMediaType(m.replyToText)">
+                    <span *ngSwitchCase="'image'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> Image/GIF</span>
+                    <span *ngSwitchCase="'video'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">videocam</mat-icon> Video</span>
+                    <span *ngSwitchCase="'audio'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">audiotrack</mat-icon> Audio</span>
+                    <span *ngSwitchCase="'file'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">insert_drive_file</mat-icon> File</span>
+                    <span *ngSwitchDefault>
+                      {{ m.replyToText | slice:0:100 }}{{ (m.replyToText && m.replyToText.length > 100) ? '...' : '' }}
+                    </span>
                   </ng-container>
-                  <ng-container *ngSwitchCase="'video'">
-                    <video [src]="m.text || m.message" class="message-media" controls></video>
-                  </ng-container>
-                  <ng-container *ngSwitchCase="'audio'">
-                    <audio [src]="m.text || m.message" controls style="max-width: 250px; width: 100%;"></audio>
-                  </ng-container>
-                  <ng-container *ngSwitchCase="'file'">
-                    <div class="file-attachment">
-                      <mat-icon>insert_drive_file</mat-icon>
-                      <a [href]="m.text || m.message" download="Attachment"
-                        style="color: inherit; text-decoration: none;">Download File</a>
-                    </div>
-                  </ng-container>
-                  <ng-container *ngSwitchDefault>
-                    {{m.text || m.message}} <span *ngIf="m.isEdited" class="edited-tag">(edited)</span>
-                  </ng-container>
-                </ng-container>
-                <!-- Time & Status Indicators -->
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <!-- Reactions Display -->
-                  <div class="reactions-display" *ngIf="m.reactions && m.reactions.length > 0">
-                    <span *ngFor="let r of m.reactions" [title]="r.email">{{ r.emoji }}</span>
-                  </div>
-                  <div class="msg-status"
-                    style="display: flex; align-items: center; gap: 4px; opacity: 0.8; font-size: 11px; margin-top: 6px; justify-content: flex-end;">
-                    <span class="msg-time"
-                      [style.color]="(m.email || m.username || m.user) === currentUser ? '#e0e7ff' : '#64748b'">{{
-                      (m.createdAt || m.timestamp) | date:'shortTime' }}</span>
-                    <ng-container *ngIf="(m.email || m.username || m.user) === currentUser">
-                      <mat-icon *ngIf="!m.receiver" class="status-icon">done</mat-icon>
-                      <mat-icon *ngIf="m.receiver && (m.status === 'sent' || !m.status)"
-                        class="status-icon">done</mat-icon>
-                      <mat-icon *ngIf="m.receiver && m.status === 'delivered'" class="status-icon">done_all</mat-icon>
-                      <mat-icon *ngIf="m.receiver && m.status === 'seen'" class="status-icon seen">done_all</mat-icon>
+                </div>
+              </div>
+              <div class="msg-content-wrapper"
+                style="display: flex; align-items: center; justify-content: space-between; gap: 8px; color: inherit;">
+                <div class="msg-content" style="color: inherit;">
+                  <ng-container [ngSwitch]="getMediaType(m.text || m.message)">
+                    <ng-container *ngSwitchCase="'image'">
+                      <img [src]="m.text || m.message" class="message-media" alt="Image" />
                     </ng-container>
+                    <ng-container *ngSwitchCase="'video'">
+                      <video [src]="m.text || m.message" class="message-media" controls></video>
+                    </ng-container>
+                    <ng-container *ngSwitchCase="'audio'">
+                      <audio [src]="m.text || m.message" controls style="max-width: 250px; width: 100%;"></audio>
+                    </ng-container>
+                    <ng-container *ngSwitchCase="'file'">
+                      <div class="file-attachment">
+                        <mat-icon>insert_drive_file</mat-icon>
+                        <a [href]="m.text || m.message" download="Attachment"
+                          style="color: inherit; text-decoration: none;">Download File</a>
+                      </div>
+                    </ng-container>
+                    <ng-container *ngSwitchDefault>
+                      {{m.text || m.message}} <span *ngIf="m.isEdited" class="edited-tag">(edited)</span>
+                    </ng-container>
+                  </ng-container>
+                  <!-- Time & Status Indicators -->
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <!-- Reactions Display -->
+                    <div class="reactions-display" *ngIf="m.reactions && m.reactions.length > 0">
+                      <span *ngFor="let r of m.reactions" [title]="r.email">{{ r.emoji }}</span>
+                    </div>
+                    <div class="msg-status"
+                      style="display: flex; align-items: center; gap: 4px; opacity: 0.8; font-size: 11px; margin-top: 6px; justify-content: flex-end;">
+                      <span class="msg-time"
+                        [style.color]="(m.email || m.username || m.user) === currentUser ? 'rgba(255,255,255,0.75)' : 'var(--text-secondary)'">{{
+                        (m.createdAt || m.timestamp) | date:'shortTime' }}</span>
+                      <ng-container *ngIf="(m.email || m.username || m.user) === currentUser">
+                        <mat-icon *ngIf="!m.receiver" class="status-icon">done</mat-icon>
+                        <mat-icon *ngIf="m.receiver && (m.status === 'sent' || !m.status)"
+                          class="status-icon">done</mat-icon>
+                        <mat-icon *ngIf="m.receiver && m.status === 'delivered'" class="status-icon">done_all</mat-icon>
+                        <mat-icon *ngIf="m.receiver && m.status === 'seen'" class="status-icon seen">done_all</mat-icon>
+                      </ng-container>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="message-actions">
-            <button mat-icon-button class="action-btn reaction-btn-trigger" *ngIf="m._id"
-              (click)="toggleReactionPopup(m._id, $event)" title="React"><mat-icon>add_reaction</mat-icon></button>
-            <button mat-icon-button class="action-btn" (click)="startReply(m)"
-              title="Reply"><mat-icon>reply</mat-icon></button>
-            <button mat-icon-button class="action-btn"
-              *ngIf="(m.email || m.username || m.user) === currentUser && m._id && getMediaType(m.text || m.message) === 'text' && !isOnlyEmoji(m.text || m.message)"
-              (click)="startEdit(m)" title="Edit"><mat-icon>edit</mat-icon></button>
-            <button mat-icon-button class="action-btn" *ngIf="m._id" (click)="deleteMessage(m._id)"
-              title="Delete"><mat-icon>delete</mat-icon></button>
-            <!-- Reaction Popup -->
-            <div class="reaction-popup" *ngIf="showReactionPopup === m._id" (click)="$event.stopPropagation()">
-              <span (click)="reactToMessage(m._id, '👍')">👍</span>
-              <span (click)="reactToMessage(m._id, '❤️')">❤️</span>
-              <span (click)="reactToMessage(m._id, '😂')">😂</span>
-              <span (click)="reactToMessage(m._id, '😮')">😮</span>
-              <span (click)="reactToMessage(m._id, '😢')">😢</span>
-              <span (click)="reactToMessage(m._id, '🙏')">🙏</span>
-              <span class="reaction-add-btn" (click)="openReactionEmojiPicker(m._id, $event)">
-                <mat-icon>add</mat-icon>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Typing Indicator -->
-        <div class="typing-indicator" *ngIf="typingUsers.length > 0">
-          <div class="typing-bubble">
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          </div>
-          <span class="typing-text">{{ typingUsers.join(', ') }} {{ typingUsers.length > 1 ? 'are' : 'is' }}
-            typing...</span>
-        </div>
-
-      </div>
-
-      <!-- INPUT -->
-      <div class="input-area-container"
-        style="padding: 20px 32px; background: #ffffff; border-top: 1px solid #e2e8f0; z-index: 10;">
-        <!-- Reply Preview Bar -->
-        <div *ngIf="replyingToMessage" class="reply-bar">
-          <div class="reply-bar-content">
-            <mat-icon class="reply-bar-icon">reply</mat-icon>
-            <div class="reply-bar-text">
-              <div class="reply-bar-sender">Replying to {{ getReplySenderName(replyingToMessage) }}</div>
-              <div class="reply-bar-message">
-                <ng-container [ngSwitch]="getMediaType(replyingToMessage.text || replyingToMessage.message)">
-                  <span *ngSwitchCase="'image'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> Image/GIF</span>
-                  <span *ngSwitchCase="'video'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">videocam</mat-icon> Video</span>
-                  <span *ngSwitchCase="'audio'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">audiotrack</mat-icon> Audio</span>
-                  <span *ngSwitchCase="'file'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
-                      style="font-size: 14px; width: 14px; height: 14px;">insert_drive_file</mat-icon> File</span>
-                  <span *ngSwitchDefault>
-                    {{ (replyingToMessage.text || replyingToMessage.message) | slice:0:100 }}{{ ((replyingToMessage.text
-                    || replyingToMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
-                  </span>
-                </ng-container>
+            <div class="message-actions">
+              <button mat-icon-button class="action-btn reaction-btn-trigger" *ngIf="m._id"
+                [matMenuTriggerFor]="emojiMenu" (click)="reactingToMessageId = m._id"
+                title="React"><mat-icon>add_reaction</mat-icon></button>
+              <button mat-icon-button class="action-btn" (click)="startReply(m)"
+                title="Reply"><mat-icon>reply</mat-icon></button>
+              <button mat-icon-button class="action-btn"
+                *ngIf="(m.email || m.username || m.user) === currentUser && m._id && getMediaType(m.text || m.message) === 'text' && !isOnlyEmoji(m.text || m.message)"
+                (click)="startEdit(m)" title="Edit"><mat-icon>edit</mat-icon></button>
+              <button mat-icon-button class="action-btn" *ngIf="m._id" (click)="deleteMessage(m._id)"
+                title="Delete"><mat-icon>delete</mat-icon></button>
+              <!-- Reaction Popup -->
+              <div class="reaction-popup" *ngIf="showReactionPopup === m._id" (click)="$event.stopPropagation()">
+                <span (click)="reactToMessage(m._id, '👍')">👍</span>
+                <span (click)="reactToMessage(m._id, '❤️')">❤️</span>
+                <span (click)="reactToMessage(m._id, '😂')">😂</span>
+                <span (click)="reactToMessage(m._id, '😮')">😮</span>
+                <span (click)="reactToMessage(m._id, '😢')">😢</span>
+                <span (click)="reactToMessage(m._id, '🙏')">🙏</span>
+                <span class="reaction-add-btn" (click)="openReactionEmojiPicker(m._id, $event)">
+                  <mat-icon>add</mat-icon>
+                </span>
               </div>
             </div>
           </div>
-          <button mat-icon-button (click)="cancelReply()" title="Cancel Reply">
-            <mat-icon>close</mat-icon>
-          </button>
+
+          <!-- Typing Indicator -->
+          <div class="typing-indicator" *ngIf="typingUsers.length > 0">
+            <div class="typing-bubble">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+            <span class="typing-text">{{ typingUsers.join(', ') }} {{ typingUsers.length > 1 ? 'are' : 'is' }}
+              typing...</span>
+          </div>
+
         </div>
 
-        <!-- Edit Preview Bar -->
-        <div *ngIf="editingMessage" class="reply-bar edit-bar">
-          <div class="reply-bar-content">
-            <mat-icon class="reply-bar-icon">edit</mat-icon>
-            <div class="reply-bar-text">
-              <div class="reply-bar-sender">Editing Message</div>
-              <div class="reply-bar-message">
-                {{ (editingMessage.text || editingMessage.message) | slice:0:100 }}{{ ((editingMessage.text ||
-                editingMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
+        <!-- INPUT -->
+        <div class="input-area-container" style="padding: 10px 24px 20px; background: transparent; z-index: 10;">
+          <!-- Reply Preview Bar -->
+          <div *ngIf="replyingToMessage" class="reply-bar">
+            <div class="reply-bar-content">
+              <mat-icon class="reply-bar-icon">reply</mat-icon>
+              <div class="reply-bar-text">
+                <div class="reply-bar-sender">Replying to {{ getReplySenderName(replyingToMessage) }}</div>
+                <div class="reply-bar-message">
+                  <ng-container [ngSwitch]="getMediaType(replyingToMessage.text || replyingToMessage.message)">
+                    <span *ngSwitchCase="'image'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">image</mat-icon> Image/GIF</span>
+                    <span *ngSwitchCase="'video'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">videocam</mat-icon> Video</span>
+                    <span *ngSwitchCase="'audio'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">audiotrack</mat-icon> Audio</span>
+                    <span *ngSwitchCase="'file'" style="display: flex; align-items: center; gap: 4px;"><mat-icon
+                        style="font-size: 14px; width: 14px; height: 14px;">insert_drive_file</mat-icon> File</span>
+                    <span *ngSwitchDefault>
+                      {{ (replyingToMessage.text || replyingToMessage.message) | slice:0:100 }}{{
+                      ((replyingToMessage.text
+                      || replyingToMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
+                    </span>
+                  </ng-container>
+                </div>
               </div>
             </div>
+            <button mat-icon-button (click)="cancelReply()" title="Cancel Reply">
+              <mat-icon>close</mat-icon>
+            </button>
           </div>
-          <button mat-icon-button (click)="cancelEdit()" title="Cancel Edit">
-            <mat-icon>close</mat-icon>
-          </button>
+
+          <!-- Edit Preview Bar -->
+          <div *ngIf="editingMessage" class="reply-bar edit-bar">
+            <div class="reply-bar-content">
+              <mat-icon class="reply-bar-icon">edit</mat-icon>
+              <div class="reply-bar-text">
+                <div class="reply-bar-sender">Editing Message</div>
+                <div class="reply-bar-message">
+                  {{ (editingMessage.text || editingMessage.message) | slice:0:100 }}{{ ((editingMessage.text ||
+                  editingMessage.message)?.length ?? 0) > 100 ? '...' : '' }}
+                </div>
+              </div>
+            </div>
+            <button mat-icon-button (click)="cancelEdit()" title="Cancel Edit">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <div class="input-area"
+            style="position: relative; display: flex; align-items: center; gap: 12px; background: #f1f5f9; border-radius: 30px; padding: 6px 12px 6px 20px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+
+            <!-- Extracted Emoji & GIF Picker Component -->
+            <app-emoji-picker *ngIf="showEmojis" #emojiPicker [disableGif]="reactingToMessageId ? true : false"
+              (emojiSelected)="addEmoji($event)" (gifSelected)="sendGifDirect($event)">
+            </app-emoji-picker>
+
+            <div class="action-buttons-container">
+              <!-- Media Upload Button -->
+              <input type="file" #mediaInput (change)="onMediaSelected($event)" style="display: none;"
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip">
+              <button class="button_ui" mat-icon-button color="primary" (click)="mediaInput.click()"
+                title="Attach File">
+                <mat-icon>attach_file</mat-icon>
+              </button>
+
+              <!-- Camera Button -->
+              <button class="button_ui" mat-icon-button color="primary" (click)="openCameraModal()" title="Take Photo">
+                <mat-icon>camera_alt</mat-icon>
+              </button>
+
+              <button class="button_ui emoji-toggle-btn" mat-icon-button color="primary" #emojiToggleButton
+                (click)="toggleEmojis($event)" title="Emoji & GIF Picker">
+                <mat-icon>sentiment_satisfied_alt</mat-icon>
+              </button>
+
+              <button class="button_ui" mat-icon-button [color]="autoTranslate ? 'accent' : 'primary'"
+                (click)="autoTranslate = !autoTranslate" title="Toggle Auto Translate">
+                <mat-icon>translate</mat-icon>
+              </button>
+            </div>
+
+            <!-- Language Selector Menu (Looks like a small chip and opens upwards) -->
+            <button *ngIf="autoTranslate" mat-button [matMenuTriggerFor]="languageMenu"
+              style="border-radius: 20px; padding: 0; min-width: 100px; background: #e0e0e0; color: #333; margin-right: 8px; height: 36px;">
+              {{ targetLanguage }} <mat-icon style="margin-right: 8px;">arrow_drop_up</mat-icon>
+            </button>
+
+            <mat-menu #languageMenu="matMenu" yPosition="above">
+              <button mat-menu-item *ngFor="let lang of availableLanguages" (click)="targetLanguage = lang">
+                <mat-icon color="accent" *ngIf="targetLanguage === lang">check</mat-icon>
+                <span [style.margin-left.px]="targetLanguage === lang ? 0 : 40">{{ lang }}</span>
+              </button>
+            </mat-menu>
+
+            <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic"
+              style="flex: 1; margin: 0; padding: 0;">
+              <input #messageInput matInput [(ngModel)]="message"
+                [placeholder]="isTranslating ? 'Translating to ' + targetLanguage + '...' : 'Type your message...'"
+                (input)="onTyping()" (keyup.enter)="send()" [disabled]="isTranslating" style="font-size: 15px;">
+            </mat-form-field>
+            <button class="chat-send-btn" (click)="send()" [disabled]="!message.trim() && !isTranslating"
+              title="Send Message">
+              <mat-icon *ngIf="!isTranslating">send</mat-icon>
+              <mat-icon *ngIf="isTranslating" class="spin-animation">autorenew</mat-icon>
+            </button>
+          </div>
         </div>
+      </ng-container>
 
-        <div class="input-area"
-          style="position: relative; display: flex; align-items: center; gap: 12px; background: #f1f5f9; border-radius: 30px; padding: 6px 12px 6px 20px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-
-          <!-- Extracted Emoji & GIF Picker Component -->
-          <app-emoji-picker *ngIf="showEmojis" #emojiPicker [disableGif]="reactingToMessageId ? true : false"
-            (emojiSelected)="addEmoji($event)" (gifSelected)="sendGifDirect($event)">
+      <!-- Universal Emoji Menu Overlay -->
+      <mat-menu #emojiMenu="matMenu" yPosition="above" xPosition="after" class="emoji-menu-panel">
+        <div (click)="$event.stopPropagation()"
+          style="width: 320px; height: 400px; display: block; overflow: hidden; border-radius: 8px;">
+          <app-emoji-picker [disableGif]="reactingToMessageId ? true : false" (emojiSelected)="addEmoji($event)"
+            (gifSelected)="sendGifDirect($event)">
           </app-emoji-picker>
-
-          <div class="action-buttons-container">
-            <!-- Media Upload Button -->
-            <input type="file" #mediaInput (change)="onMediaSelected($event)" style="display: none;"
-              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip">
-            <button class="button_ui" mat-icon-button color="primary" (click)="mediaInput.click()" title="Attach File">
-              <mat-icon>attach_file</mat-icon>
-            </button>
-
-            <!-- Camera Button -->
-            <button class="button_ui" mat-icon-button color="primary" (click)="openCameraModal()" title="Take Photo">
-              <mat-icon>camera_alt</mat-icon>
-            </button>
-
-            <button class="button_ui" mat-icon-button color="primary" #emojiToggleButton (click)="toggleEmojis()"
-              title="Emoji & GIF Picker">
-              <mat-icon>sentiment_satisfied_alt</mat-icon>
-            </button>
-
-            <button class="button_ui" mat-icon-button [color]="autoTranslate ? 'accent' : 'primary'"
-              (click)="autoTranslate = !autoTranslate" title="Toggle Auto Translate">
-              <mat-icon>translate</mat-icon>
-            </button>
-          </div>
-
-          <!-- Language Selector Menu (Looks like a small chip and opens upwards) -->
-          <button *ngIf="autoTranslate" mat-button [matMenuTriggerFor]="languageMenu"
-            style="border-radius: 20px; padding: 0; min-width: 100px; background: #e0e0e0; color: #333; margin-right: 8px; height: 36px;">
-            {{ targetLanguage }} <mat-icon style="margin-right: 8px;">arrow_drop_up</mat-icon>
-          </button>
-
-          <mat-menu #languageMenu="matMenu" yPosition="above">
-            <button mat-menu-item *ngFor="let lang of availableLanguages" (click)="targetLanguage = lang">
-              <mat-icon color="accent" *ngIf="targetLanguage === lang">check</mat-icon>
-              <span [style.margin-left.px]="targetLanguage === lang ? 0 : 40">{{ lang }}</span>
-            </button>
-          </mat-menu>
-
-          <mat-form-field appearance="outline" class="input" subscriptSizing="dynamic"
-            style="flex: 1; margin: 0; padding: 0;">
-            <input #messageInput matInput [(ngModel)]="message"
-              [placeholder]="isTranslating ? 'Translating to ' + targetLanguage + '...' : 'Type your message...'"
-              (input)="onTyping()" (keyup.enter)="send()" [disabled]="isTranslating" style="font-size: 15px;">
-          </mat-form-field>
-          <button mat-fab color="primary" (click)="send()" [disabled]="!message.trim() && !isTranslating"
-            style="width: 44px; height: 44px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">
-            <mat-icon *ngIf="!isTranslating">send</mat-icon>
-            <mat-icon *ngIf="isTranslating" class="spin-animation">autorenew</mat-icon>
-          </button>
         </div>
-      </div>
+      </mat-menu>
     </div>
   </div>
 
   <!-- Centered Profile Settings Dialog/Modal -->
   <div *ngIf="showProfileSettings" class="modal-overlay">
-    <div class="modal-content mat-elevation-z8">
-      <div
-        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
-        <h4 style="margin: 0; font-size: 18px; font-weight: 500;">Profile Settings</h4>
-        <button mat-icon-button (click)="toggleProfileSettings()" title="Close">
+    <div class="modal-content mat-elevation-z16">
+      <div class="modal-header">
+        <h4>Profile Settings</h4>
+        <button mat-icon-button (click)="toggleProfileSettings()" title="Close" class="close-btn">
           <mat-icon>close</mat-icon>
         </button>
       </div>
 
-      <div style="text-align: center; position: relative; margin-bottom: 20px;">
-        <img *ngIf="profileImage" [src]="profileImage"
-          style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #00acc1;">
-        <mat-icon *ngIf="!profileImage" color="primary"
-          style="font-size: 100px; width: 100px; height: 100px;">account_circle</mat-icon>
+      <div class="modal-avatar-container">
+        <div class="avatar-ring-wrapper">
+          <img *ngIf="profileImage" [src]="profileImage" class="modal-avatar">
+          <mat-icon *ngIf="!profileImage" class="modal-avatar-placeholder">account_circle</mat-icon>
+        </div>
         <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*" style="display: none;">
-        <button mat-mini-fab color="accent"
-          style="position: absolute; bottom: 0; left: 50%; transform: translateX(20px) scale(0.8);"
-          (click)="fileInput.click()">
-          <mat-icon>edit</mat-icon>
+        <button mat-mini-fab class="modal-avatar-edit-btn" (click)="fileInput.click()" title="Change Profile Picture">
+          <mat-icon>camera_alt</mat-icon>
         </button>
       </div>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width: 100%; margin-bottom: 15px;">
-        <mat-label>First Name</mat-label>
-        <input matInput [(ngModel)]="editFirstname">
-      </mat-form-field>
+      <!-- First Name -->
+      <div class="modal-input-container">
+        <label class="modal-input-label">First Name</label>
+        <div class="modal-custom-input-box">
+          <mat-icon class="modal-input-icon">person</mat-icon>
+          <input type="text" [(ngModel)]="editFirstname" placeholder="Enter your first name">
+        </div>
+      </div>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width: 100%; margin-bottom: 20px;">
-        <mat-label>Last Name</mat-label>
-        <input matInput [(ngModel)]="editLastname">
-      </mat-form-field>
+      <!-- Last Name -->
+      <div class="modal-input-container">
+        <label class="modal-input-label">Last Name</label>
+        <div class="modal-custom-input-box">
+          <mat-icon class="modal-input-icon">badge</mat-icon>
+          <input type="text" [(ngModel)]="editLastname" placeholder="Enter your last name">
+        </div>
+      </div>
 
-      <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        <button mat-stroked-button (click)="toggleProfileSettings()">Cancel</button>
-        <button mat-flat-button color="primary" (click)="saveProfile()">Save Changes</button>
+      <div class="modal-actions">
+        <button mat-stroked-button class="modal-btn-cancel" (click)="toggleProfileSettings()"
+          [disabled]="isSavingProfile">Cancel</button>
+        <button mat-flat-button class="modal-btn-save" (click)="saveProfile()"
+          [disabled]="isSavingProfile || !editFirstname.trim()">
+          <span *ngIf="!isSavingProfile">Save Changes</span>
+          <span *ngIf="isSavingProfile" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <mat-icon class="spin-animation"
+              style="font-size: 18px; width: 18px; height: 18px; margin: 0;">autorenew</mat-icon>
+            Saving...
+          </span>
+        </button>
       </div>
     </div>
   </div>
 
   <!-- Camera Capture Modal -->
   <div *ngIf="showCamera" class="modal-overlay">
-    <div class="modal-content mat-elevation-z8" style="width: auto; max-width: 90vw;">
-      <div
-        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
-        <h4 style="margin: 0; font-size: 18px; font-weight: 500;">Take a Photo</h4>
-        <button mat-icon-button (click)="closeCameraModal()" title="Close">
+    <div class="modal-content mat-elevation-z16" style="width: auto; max-width: 90vw;">
+      <div class="modal-header">
+        <h4>Take a Photo</h4>
+        <button mat-icon-button (click)="closeCameraModal()" title="Close" class="close-btn">
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
-        <video #video autoplay muted playsinline
-          style="max-width: 100%; max-height: 60vh; border-radius: 8px; background: #000;"></video>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+        <div
+          style="position: relative; border-radius: 16px; overflow: hidden; border: 3px solid #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.15); width: 100%;">
+          <video #video autoplay muted playsinline
+            style="display: block; max-width: 100%; max-height: 60vh; background: #000;"></video>
+        </div>
         <canvas #canvas hidden></canvas>
-        <button mat-fab color="accent" (click)="capturePhoto()" title="Capture & Send">
+        <button mat-fab class="modal-camera-capture-btn" (click)="capturePhoto()" title="Capture & Send">
           <mat-icon>camera</mat-icon>
         </button>
       </div>

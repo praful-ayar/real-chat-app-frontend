@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -32,7 +32,12 @@ export class SubmitErrorStateMatcher implements ErrorStateMatcher {
   templateUrl: './login.html',
   styleUrls: ['./login.css']
 })
-export class Login {
+export class Login implements AfterViewInit, OnDestroy {
+
+  @ViewChild('plexusCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
+  private animationFrameId: number | null = null;
+  private mouse = { x: -1000, y: -1000 };
+  private cleanupCanvas: (() => void) | null = null;
 
   private router = inject(Router);
   private authService = inject(AuthService);
@@ -124,6 +129,120 @@ export class Login {
     } finally {
       this.isLoading = false;
       this.cdr.detectChanges();
+    }
+  }
+
+  ngAfterViewInit() {
+    const canvas = this.canvasRef.nativeElement;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const trackMouse = (e: MouseEvent) => {
+      this.mouse.x = e.clientX;
+      this.mouse.y = e.clientY;
+    };
+    window.addEventListener('mousemove', trackMouse);
+
+    const trackMouseLeave = () => {
+      this.mouse.x = -1000;
+      this.mouse.y = -1000;
+    };
+    window.addEventListener('mouseleave', trackMouseLeave);
+
+    const particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      r: number;
+      color: string;
+    }> = [];
+
+    const colors = ['#0d9488', '#0284c7', '#34d399', '#0f766e'];
+    for (let i = 0; i < 70; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 0.9,
+        vy: (Math.random() - 0.5) * 0.9,
+        r: Math.random() * 2.5 + 1.2,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        if (this.mouse.x > -500) {
+          const dx = this.mouse.x - p.x;
+          const dy = this.mouse.y - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 180) {
+            p.x += (dx / dist) * 0.25;
+            p.y += (dy / dist) * 0.25;
+          }
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = 0.45;
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 0.12;
+      for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 110) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = '#0d9488';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      this.animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    this.cleanupCanvas = () => {
+      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('mousemove', trackMouse);
+      window.removeEventListener('mouseleave', trackMouseLeave);
+    };
+  }
+
+  ngOnDestroy() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
+    if (this.cleanupCanvas) {
+      this.cleanupCanvas();
     }
   }
 }

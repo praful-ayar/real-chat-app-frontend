@@ -8,12 +8,9 @@ export class AuthService {
   private apiUrl = environment.apiUrl;
 
 
-  async logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('firstname');
-    localStorage.removeItem('lastname');
-    localStorage.removeItem('profileImage');
+  logout() {
+    localStorage.clear();
+    sessionStorage.clear();
   }
 
   async login(email: string, password: string) {

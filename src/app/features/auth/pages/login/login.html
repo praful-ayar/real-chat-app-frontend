@@ -1,15 +1,17 @@
 <div class="login-wrapper">
-  <div class="top-band"></div>
-  <mat-card class="login-card mat-elevation-z12">
+  <canvas #plexusCanvas style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;"></canvas>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+  <mat-card class="login-card mat-elevation-z24">
     <div class="brand-container">
       <div class="icon-circle">
-        <img src="/icon.png" width="50" height="50" alt="logo">
+        <img src="/icon.png" alt="logo">
       </div>
-      <h2>Realtime Chat</h2>
       <p>{{ isLoginMode ? 'Login to your account' : 'Create a new account' }}</p>
     </div>
     <mat-card-content class="login-content">
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
         <mat-label>Email</mat-label>
         <input matInput [(ngModel)]="email" email placeholder="Enter your email" autocomplete="off"
           (keyup.enter)="submit()" required #emailRef="ngModel" [errorStateMatcher]="matcher">
@@ -21,7 +23,7 @@
           Please enter a valid email address
         </mat-error>
       </mat-form-field>
-      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width">
+      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width" subscriptSizing="dynamic">
         <mat-label>First Name</mat-label>
         <input matInput [(ngModel)]="firstname" placeholder="Enter your first name" autocomplete="off"
           (keyup.enter)="submit()" #firstnameRef="ngModel" required [errorStateMatcher]="matcher">
@@ -30,7 +32,7 @@
           First name is required
         </mat-error>
       </mat-form-field>
-      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width">
+      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width" subscriptSizing="dynamic">
         <mat-label>Last Name*</mat-label>
         <input matInput [(ngModel)]="lastname" placeholder="Enter your last name" autocomplete="off"
           (keyup.enter)="submit()" #lastnameRef="ngModel" required [errorStateMatcher]="matcher">
@@ -39,7 +41,7 @@
           Last name is required
         </mat-error>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
         <mat-label>Password</mat-label>
         <input matInput type="password" [(ngModel)]="password" placeholder="Enter your password"
           (keyup.enter)="submit()" #passwordRef="ngModel" required [errorStateMatcher]="matcher">
@@ -48,7 +50,7 @@
           Password is required
         </mat-error>
       </mat-form-field>
-      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width">
+      <mat-form-field *ngIf="!isLoginMode" appearance="outline" class="full-width" subscriptSizing="dynamic">
         <mat-label>Confirm Password</mat-label>
         <input matInput type="password" [(ngModel)]="confirmpassword" placeholder="Enter your confirm password"
           (keyup.enter)="submit()" #confirmpasswordRef="ngModel" required [errorStateMatcher]="matcher">

@@ -89,6 +89,7 @@ export class Chat implements OnInit, OnDestroy {
 
   profileImage: string | null = null;
   showProfileSettings = false;
+  isSavingProfile = false;
   editFirstname = '';
   editLastname = '';
   showEmojis = false;
@@ -515,7 +516,8 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   async saveProfile() {
-    if (!this.currentUser) return;
+    if (!this.currentUser || this.isSavingProfile) return;
+    this.isSavingProfile = true;
     try {
       const res = await this.authService.updateProfile({
         email: this.currentUser,
@@ -540,31 +542,33 @@ export class Chat implements OnInit, OnDestroy {
       this.socket.socket.emit('updateProfile', this.currentUser);
     } catch (err) {
       console.error('Failed to update profile:', err);
+    } finally {
+      this.isSavingProfile = false;
+      this.cdr.detectChanges();
     }
   }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
-    if (this.showEmojis && this.emojiToggleButton && this.emojiPicker) {
-      const clickedInsideButton = this.emojiToggleButton.nativeElement.contains(event.target as Node);
-      const clickedInsidePicker = this.emojiPicker.nativeElement.contains(event.target as Node);
-
-      if (!clickedInsideButton && !clickedInsidePicker) {
-        this.zone.run(() => {
-          this.showEmojis = false;
-                this.reactingToMessageId = null;
-        });
-      }
-
-      // Close reaction popup if clicked outside
-      const target = event.target as HTMLElement;
-      if (!target.closest('.reaction-btn-trigger') && !target.closest('.reaction-popup')) {
-        this.showReactionPopup = null;
-      }
+    const target = event.target as HTMLElement;
+    
+    // Close reaction popup if clicked outside
+    if (!target.closest('.reaction-btn-trigger') && !target.closest('.reaction-popup')) {
+      this.showReactionPopup = null;
+    }
+    
+    // Close emoji picker if clicked outside of it and not clicking the toggle button
+    if (this.showEmojis && !target.closest('app-emoji-picker') && !target.closest('.emoji-toggle-btn')) {
+      this.showEmojis = false;
+      this.cdr.detectChanges();
     }
   }
 
-  toggleEmojis() {
+  toggleEmojis(event?: MouseEvent) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     this.showEmojis = !this.showEmojis;
     this.reactingToMessageId = null;
   }
@@ -998,6 +1002,12 @@ export class Chat implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Add contact failed', error);
     }
+  }
+
+  clearContactSearch() {
+    this.newContactEmail = '';
+    this.searchResults = [];
+    this.cdr.detectChanges();
   }
 
   onSearchContact() {

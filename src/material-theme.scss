@@ -10,8 +10,9 @@ html {
   @include mat.theme(
     (
       color: (
+        theme-type: light,
         primary: mat.$cyan-palette,
-        tertiary: mat.$orange-palette,
+        tertiary: mat.$cyan-palette,
       ),
       typography: Roboto,
       density: 0,
@@ -20,16 +21,14 @@ html {
 }
 
 body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
+  // Default the application to a light color theme.
   color-scheme: light;
 
   // Set a default background, font and text colors for the application using
   // Angular Material's system-level CSS variables. Learn more about these
   // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
+  background-color: var(--background);
+  color: var(--text-primary);
   font: var(--mat-sys-body-medium);
 
   // Reset the user agent margin.
