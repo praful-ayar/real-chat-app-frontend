@@ -5,34 +5,71 @@
   <div class="bg-blob blob-3"></div>
   <div class="container mat-elevation-z24"
     style="display: flex; width: 95vw; max-width: 1400px; height: 90vh; background: rgba(255, 255, 255, 0.45); border-radius: 24px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.65); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); box-shadow: 0 30px 60px rgba(15, 118, 110, 0.08); z-index: 1;">
+    
+    
+
     <!-- USERS SIDEBAR -->
     <div class="sidebar" [class.mobile-hidden]="isMobileChatView"
       style="width: 280px; min-width: 280px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid rgba(13, 148, 136, 0.08); background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 2;">
-      <!-- Add Contact UI for Sidebar -->
-      <div class="add-contact-section" style="padding: 16px 16px 12px;">
-        <div style="padding:12px 16px;">
-          <img src="/icon.png" alt="ConnectHub" style="
-            width:180px;
-            height:auto;
-            display:block;
-        ">
+      <!-- NEW SIDEBAR HEADER -->
+      <div class="sidebar-header-main" style="height: 76px; padding: 0 16px; background-color: rgba(255, 255, 255, 0.75); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(13, 148, 136, 0.08); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+        
+        <!-- Logo -->
+        <img src="/icon.png" alt="ConnectHub" style="height: 32px; width: auto;">
+
+        <!-- Actions -->
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <!-- Contact Requests Dropdown (Bell icon) -->
+          <button mat-icon-button [matMenuTriggerFor]="requestsMenu" style="position: relative; color: var(--text-secondary);">
+            <mat-icon>notifications</mat-icon>
+            <span *ngIf="pendingRequests.length > 0" 
+                  style="position: absolute; top: 4px; right: 4px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+              {{pendingRequests.length}}
+            </span>
+          </button>
+          <mat-menu #requestsMenu="matMenu" yPosition="below" xPosition="before" class="requests-menu" [overlapTrigger]="false">
+            <div style="padding: 12px 16px; font-weight: bold; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.05); color: var(--text-primary);">
+              Contact Requests ({{pendingRequests.length}})
+            </div>
+            <div *ngIf="pendingRequests.length === 0" style="padding: 16px; text-align: center; color: var(--text-secondary); font-size: 13px;">
+              No pending requests.
+            </div>
+            <div *ngIf="pendingRequests.length > 0" style="max-height: 300px; overflow-y: auto;">
+              <div *ngFor="let req of pendingRequests" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.05);" (click)="$event.stopPropagation()">
+                <img *ngIf="req.senderUser?.profileImage" [src]="req.senderUser.profileImage" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                <div *ngIf="!req.senderUser?.profileImage" style="width: 36px; height: 36px; border-radius: 50%; background: #97dbd5; display: flex; align-items: center; justify-content: center; color: white;">
+                  <mat-icon style="font-size: 20px; width: 20px; height: 20px;">person</mat-icon>
+                </div>
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+                  <span style="font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{req.senderUser?.firstname}} {{req.senderUser?.lastname}}</span>
+                  <span style="font-size: 11px; color: var(--text-secondary);">Wants to connect</span>
+                </div>
+                <div style="display: flex; gap: 4px;">
+                  <button mat-icon-button (click)="acceptRequest(req._id)" style="width: 32px; height: 32px; color: #10b981; background: rgba(16, 185, 129, 0.1);" title="Accept">
+                    <mat-icon style="font-size: 18px; width: 18px; height: 18px; line-height: 18px;">check</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="rejectRequest(req._id)" style="width: 32px; height: 32px; color: #ef4444; background: rgba(239, 68, 68, 0.1);" title="Reject">
+                    <mat-icon style="font-size: 18px; width: 18px; height: 18px; line-height: 18px;">close</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </mat-menu>
         </div>
-        <!-- Modern Custom Search Box for Add Contact -->
-        <div class="chat-search-container"
-          style="width: 100%; height: 42px; box-sizing: border-box; margin-bottom: 12px;">
-          <mat-icon
-            style="font-size: 18px; width: 18px; height: 18px; color: var(--primary); flex-shrink: 0; margin-right: 8px;">person_search</mat-icon>
+      </div>
+
+      <!-- Add Contact / Search -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0;">
+        <div class="chat-search-container" style="width: 100% !important; height: 42px; box-sizing: border-box; background: rgba(255, 255, 255, 0.8);">
+          <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: var(--primary); flex-shrink: 0; margin-right: 8px;">person_search</mat-icon>
           <input type="text" [(ngModel)]="newContactEmail" (input)="onSearchContact(); trigger.openPanel()"
             (focus)="trigger.openPanel()" (keyup.enter)="addNewContact()" placeholder="Search Name or Email..."
             [matAutocomplete]="auto" #trigger="matAutocompleteTrigger"
             style="border: none; outline: none; padding: 4px 0; font-size: 13.5px; flex: 1; background: transparent; min-width: 0; color: var(--text-primary);">
-
+          
           <mat-icon *ngIf="newContactEmail" (click)="clearContactSearch(); $event.stopPropagation()"
             style="font-size: 18px; width: 18px; height: 18px; color: #888; cursor: pointer; flex-shrink: 0; margin-right: 8px;"
-            title="Clear">
-            close
-          </mat-icon>
-
+            title="Clear">close</mat-icon>
           <button mat-icon-button (click)="addNewContact(); $event.stopPropagation()"
             [disabled]="!newContactEmail.trim()"
             style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
@@ -41,19 +78,15 @@
 
           <mat-autocomplete #auto="matAutocomplete" (optionSelected)="onContactSelected($event)"
             class="custom-autocomplete-panel" [panelWidth]="248">
-            <mat-option *ngIf="searchResults.length === 0 && newContactEmail.trim() !== ''" disabled
-              class="custom-mat-option">
-              <span style="font-size: 13px;">No user found. Press enter to invite.</span>
+            <mat-option *ngIf="searchResults.length === 0 && newContactEmail.trim() !== ''" disabled class="custom-mat-option">
+              <span style="font-size: 13px;">No user found.</span>
             </mat-option>
             <mat-option *ngFor="let user of searchResults" [value]="user.email" class="custom-mat-option user-option">
               <div style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 4px 0;">
-                <img *ngIf="user.profileImage" [src]="user.profileImage"
-                  style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(13, 148, 136, 0.2);">
-                <mat-icon *ngIf="!user.profileImage" color="primary"
-                  style="font-size: 36px; width: 36px; height: 36px; opacity: 0.8;">account_circle</mat-icon>
+                <img *ngIf="user.profileImage" [src]="user.profileImage" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                <mat-icon *ngIf="!user.profileImage" color="primary" style="font-size: 36px; width: 36px; height: 36px; opacity: 0.8;">account_circle</mat-icon>
                 <div style="display: flex; flex-direction: column; line-height: 1.4;">
-                  <span style="font-weight: 600; color: var(--text-primary); font-size: 14px;">{{user.firstname}}
-                    {{user.lastname}}</span>
+                  <span style="font-weight: 600; color: var(--text-primary); font-size: 14px;">{{user.firstname}} {{user.lastname}}</span>
                   <span style="font-size: 12px; color: var(--text-secondary);">{{user.email}}</span>
                 </div>
               </div>
@@ -61,92 +94,43 @@
           </mat-autocomplete>
         </div>
       </div>
+
+      <!-- Contacts Statuses (Friends) -->
+      <div class="status-list-container" style="display: flex; gap: 12px; overflow-x: auto; padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0;">
+        
+        <!-- My Status -->
+        <div class="status-item add-status" style="margin-right: 4px;">
+          <div class="my-status-add" style="cursor: pointer; position: relative; display: flex; flex-direction: column; align-items: center;">
+            <div class="status-ring" [ngClass]="myStatus ? (allStatusesViewed(myStatus) ? 'viewed' : 'unviewed') : ''"
+              (click)="myStatus ? viewStatuses(myStatus) : statusInput.click()" style="width: 44px; height: 44px; padding: 2px; position: relative;">
+              <img *ngIf="profileImage" [src]="profileImage" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
+              <div *ngIf="!profileImage" style="width: 40px; height: 40px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: white;">
+                <mat-icon style="font-size: 20px; width: 20px; height: 20px;">person</mat-icon>
+              </div>
+            </div>
+            <mat-icon class="add-icon" (click)="statusInput.click(); $event.stopPropagation()" style="font-size: 14px; width: 16px; height: 16px; position: absolute; bottom: 20px; right: -2px; background: var(--secondary); color: white; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center;">add</mat-icon>
+            <span style="margin-top: 4px; font-size: 11px; font-weight: 500; color: var(--text-primary);">My Status</span>
+            <input type="file" #statusInput (change)="onStatusSelected($event)" accept="image/*,video/*" style="display: none;">
+          </div>
+        </div>
+
+        <ng-container *ngIf="statuses && statuses.length > 0">
+          <div class="status-item" *ngFor="let userStatus of statuses" (click)="viewStatuses(userStatus)">
+          <div class="status-ring" [ngClass]="allStatusesViewed(userStatus) ? 'viewed' : 'unviewed'" style="width: 44px; height: 44px; padding: 2px;">
+            <img *ngIf="userStatus.profileImage" [src]="userStatus.profileImage" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
+            <div *ngIf="!userStatus.profileImage" style="width: 40px; height: 40px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: #fff;">
+              <mat-icon style="font-size: 20px; width: 20px; height: 20px;">person</mat-icon>
+            </div>
+          </div>
+          <span style="margin-top: 4px; text-transform: capitalize; font-size: 11px; font-weight: 500; max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);">{{userStatus.firstname}}</span>
+        </div>
+        </ng-container>
+      </div>
+
       <div style="flex: 1; overflow-y: auto;">
 
-        <!-- Pending Requests Section -->
-        <div class="sidebar-requests" *ngIf="pendingRequests.length > 0"
-          style="padding: 0 4px 12px; border-bottom: 1px solid rgba(13, 148, 136, 0.08);">
-          <div class="sidebar-header" style="padding: 12px 12px 8px;">
-            <h3
-              style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin: 0;">
-              Contact Requests</h3>
-          </div>
-
-          <div class="request-list" style="display: flex; flex-direction: column; gap: 6px;">
-            <div *ngFor="let req of pendingRequests" class="custom-request-item">
-              <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
-                <img *ngIf="req.senderUser?.profileImage" [src]="req.senderUser.profileImage"
-                  style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
-                <div *ngIf="!req.senderUser?.profileImage"
-                  style="width: 32px; height: 32px; border-radius: 50%; background: #97dbd5; display: flex; align-items: center; justify-content: center; color: #eeeaea; flex-shrink: 0;">
-                  <mat-icon
-                    style="font-size: 18px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">person</mat-icon>
-                </div>
-                <div style="display: flex; flex-direction: column; min-width: 0;">
-                  <span
-                    style="font-size: 13px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    {{req.senderUser?.firstname}} {{req.senderUser?.lastname}}
-                  </span>
-                  <span style="font-size: 10.5px; color: var(--text-secondary);">wants to connect</span>
-                </div>
-              </div>
-
-              <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                <button class="request-btn-mini accept" (click)="acceptRequest(req._id)" title="Accept">
-                  <mat-icon
-                    style="font-size: 15px; width: 15px; height: 15px; display: flex; align-items: center; justify-content: center;">check</mat-icon>
-                </button>
-                <button class="request-btn-mini reject" (click)="rejectRequest(req._id)" title="Reject">
-                  <mat-icon
-                    style="font-size: 15px; width: 15px; height: 15px; display: flex; align-items: center; justify-content: center;">close</mat-icon>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sidebar-header">
+        <div class="sidebar-header" style="padding-top: 16px;">
           <h3>My Contacts</h3>
-        </div>
-
-        <!-- STORIES / STATUS SECTION -->
-        <div class="status-list-container"
-          style="display: flex; gap: 16px; padding: 0 20px 16px; overflow-x: auto; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
-          <!-- Add My Status -->
-          <div class="status-item add-status">
-            <div class="my-status-add">
-              <div class="status-ring" [ngClass]="myStatus ? (allStatusesViewed(myStatus) ? 'viewed' : 'unviewed') : ''"
-                (click)="myStatus ? viewStatuses(myStatus) : statusInput.click()">
-                <img *ngIf="profileImage" [src]="profileImage"
-                  style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
-                <div *ngIf="!profileImage"
-                  style="width: 50px; height: 50px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: #fff;">
-                  <mat-icon
-                    style="font-size: 24px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">person</mat-icon>
-                </div>
-              </div>
-              <mat-icon class="add-icon" (click)="statusInput.click(); $event.stopPropagation()">add</mat-icon>
-            </div>
-            <span style="font-size: 12px; font-weight: 500; margin-top: 4px;">My Status</span>
-            <input type="file" #statusInput (change)="onStatusSelected($event)" accept="image/*,video/*"
-              style="display: none;">
-          </div>
-
-          <!-- Contacts Statuses -->
-          <div class="status-item" *ngFor="let userStatus of statuses" (click)="viewStatuses(userStatus)">
-            <div class="status-ring" [ngClass]="allStatusesViewed(userStatus) ? 'viewed' : 'unviewed'">
-              <img *ngIf="userStatus.profileImage" [src]="userStatus.profileImage"
-                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #ddd; display: block;">
-              <div *ngIf="!userStatus.profileImage"
-                style="width: 50px; height: 50px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: #fff;">
-                <mat-icon
-                  style="font-size: 24px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">person</mat-icon>
-              </div>
-            </div>
-            <span
-              style="margin-top: 4px; text-transform: capitalize; font-size: 12px; font-weight: 500; max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{
-              userStatus.firstname }} {{userStatus.lastname}}</span>
-          </div>
         </div>
 
         <mat-list style="padding-top: 0;">
@@ -164,7 +148,7 @@
             </div>
             <div class="contact-details">
               <div class="contact-name-row">
-                <span class="contact-name">{{u.firstname}} {{u.lastname || ''}}</span>
+                <span class="contact-name">{{u.firstname | titlecase}} {{ (u.lastname || '') | titlecase }}</span>
                 <span class="unread-badge" *ngIf="unreadCounts[u.email]">{{unreadCounts[u.email]}}</span>
               </div>
               <div class="contact-status" [class.online]="isUserOnline(u.email)">
@@ -522,7 +506,8 @@
         </div>
       </mat-menu>
     </div>
-  </div>
+    
+</div>
 
   <!-- Centered Profile Settings Dialog/Modal -->
   <div *ngIf="showProfileSettings" class="modal-overlay">
